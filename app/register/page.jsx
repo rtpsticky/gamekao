@@ -2,12 +2,29 @@
 
 import { useState, useEffect } from "react";
 import liff from "@line/liff";
-import { registerUser } from "../actions/register";
+import { registerUser, checkUserRegistered } from "../actions/register";
+import Swal from "sweetalert2";
 
 export default function RegisterPage() {
     const [liffLoaded, setLiffLoaded] = useState(false);
     const [profile, setProfile] = useState(null);
+    const [displayName, setDisplayName] = useState("");
+    const [isRegistered, setIsRegistered] = useState(false);
     const [error, setError] = useState(null);
+
+    useEffect(() => {
+        if (profile?.userId) {
+            checkUserRegistered(profile.userId).then((registered) => {
+                setIsRegistered(registered);
+            });
+        }
+    }, [profile]);
+
+    useEffect(() => {
+        if (profile?.displayName) {
+            setDisplayName(profile.displayName);
+        }
+    }, [profile]);
 
     useEffect(() => {
         // Initialize LIFF
@@ -58,6 +75,57 @@ export default function RegisterPage() {
         );
     }
 
+    if (isRegistered) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-4">
+                <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full text-center">
+                    <div className="text-green-500 text-6xl mb-4">
+                        <i className="fas fa-check-circle"></i> {/* Using font awesome class if available, or just emoji/svg */}
+                        ✓
+                    </div>
+                    <h1 className="text-2xl font-bold text-gray-800 mb-2">คุณลงทะเบียนเรียบร้อยแล้ว</h1>
+                    <p className="text-gray-600 mb-6">คุณสามารถเข้าสู่เกมได้เลย</p>
+                    <a href="/game" className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition-all duration-200 inline-block">
+                        เข้าสู่เกม
+                    </a>
+                </div>
+            </div>
+        );
+    }
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+
+        try {
+            const result = await registerUser(formData);
+            if (result.success) {
+                Swal.fire({
+                    title: 'ลงทะเบียนสำเร็จ!',
+                    text: 'ยินดีต้อนรับสู่ Game Kao',
+                    icon: 'success',
+                    confirmButtonText: 'ตกลง'
+                }).then(() => {
+                    window.location.href = "/game";
+                });
+            } else {
+                Swal.fire({
+                    title: 'เกิดข้อผิดพลาด',
+                    text: result.error || 'ไม่สามารถลงทะเบียนได้',
+                    icon: 'error',
+                    confirmButtonText: 'ตกลง'
+                });
+            }
+        } catch (err) {
+            Swal.fire({
+                title: 'เกิดข้อผิดพลาด',
+                text: 'ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้',
+                icon: 'error',
+                confirmButtonText: 'ตกลง'
+            });
+        }
+    };
+
     return (
         <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-blue-100 py-10 px-4 flex items-center justify-center">
             <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full">
@@ -74,11 +142,23 @@ export default function RegisterPage() {
                     </div>
                 )}
 
-                <form action={registerUser} className="space-y-5">
+                <form onSubmit={handleSubmit} className="space-y-5">
                     {/* Hidden fields for LINE data */}
                     <input type="hidden" name="lineUserId" value={profile?.userId || "TEST_USER_ID"} />
-                    <input type="hidden" name="displayName" value={profile?.displayName || "Test User"} />
                     <input type="hidden" name="profileImageUrl" value={profile?.pictureUrl || ""} />
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">ชื่อที่ใช้แสดงในเกม (Display Name)</label>
+                        <input
+                            type="text"
+                            name="displayName"
+                            required
+                            value={displayName}
+                            onChange={(e) => setDisplayName(e.target.value)}
+                            placeholder="กรอกชื่อที่ใช้แสดงในเกม"
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+                        />
+                    </div>
 
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">ชื่อจริง</label>

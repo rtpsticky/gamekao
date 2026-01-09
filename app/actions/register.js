@@ -58,5 +58,13 @@ export async function registerUser(formData) {
         return { error: "เกิดข้อผิดพลาดในการลงทะเบียน โปรดลองใหม่อีกครั้ง" };
     }
 
-    redirect("/game"); // Redirect to game or home after success
+    return { success: true };
+}
+
+export async function checkUserRegistered(lineUserId) {
+    if (!lineUserId) return false;
+    const user = await prisma.user.findUnique({
+        where: { lineUserId },
+    });
+    return !!user;
 }
