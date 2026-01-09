@@ -1,0 +1,155 @@
+// datasource และ generator ตั้งค่าเริ่มต้น
+datasource db {
+  provider = "postgresql" // สามารถเปลี่ยนเป็น mysql หรือ sqlite ได้
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ==========================================
+// 1. ระบบผู้ใช้งานและโปรไฟล์ (User & Profile)
+// ==========================================
+model User {
+  id              String  @id @default(cuid())
+  lineUserId      String  @unique // ID จาก LINE สำหรับเชื่อมต่อ Messaging API
+  displayName     String? // ชื่อที่ใช้แสดงในเกม
+  firstName       String // ชื่อจริง
+  lastName        String // นามสกุล
+  age             Int
+  gender          String
+  profileImageUrl String? // รูปโปรไฟล์ที่อัปโหลดผ่าน LIFF
+
+  // สถานะในเกม
+  points          Int @default(0) // คะแนนสะสมเพื่อแลกของรางวัล
+  currentPosition Int @default(0) // ตำแหน่งปัจจุบันบนกระดาน (0-47)
+
+  // ข้อมูลสุขภาพ (ใช้ประเมินผลโครงการ)
+  tugBefore Float? // ค่า TUG ก่อนเริ่ม 8 สัปดาห์
+  tugAfter  Float? // ค่า TUG หลังจบ 8 สัปดาห์
+
+  // Relations
+  groups         GroupMember[] // กลุ่มที่สังกัด
+  exercises      ExerciseLog[] // ประวัติการส่งผลออกกำลังกาย
+  diceInventory  DiceInventory? // จำนวนลูกเต๋าที่ครอบครอง
+  pointHistories PointHistory[] // ประวัติการได้/ใช้แต้ม
+  gameActions    GameActionLog[] // ประวัติการเคลื่อนที่ในเกม
+  rewards        UserReward[] // ของรางวัลที่แลกไว้
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ==========================================
+// 2. ระบบกลุ่ม (Group Management by Admin)
+// ==========================================
+model Group {
+  id        String    @id @default(cuid())
+  name      String // ชื่อกลุ่ม เช่น "ชมรมผู้สูงอายุเขตสายไหม"
+  startDate DateTime? // วันเริ่มต้นโครงการ (สัปดาห์ที่ 1)
+  endDate   DateTime? // วันสิ้นสุดโครงการ (ครบ 8 สัปดาห์)
+  isActive  Boolean   @default(true)
+
+  members   GroupMember[]
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+}
+
+model GroupMember {
+  id      String @id @default(cuid())
+  groupId String
+  userId  String
+  group   Group  @relation(fields: [groupId], references: [id])
+  user    User   @relation(fields: [userId], references: [id])
+
+  @@unique([groupId, userId])
+}
+
+// ==========================================
+// 3. ระบบบันทึกผลการออกกำลังกาย (Exercise Logs)
+// ==========================================
+model ExerciseLog {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id])
+  weekNumber   Int // สัปดาห์ที่ 1-8
+  sessionCount Int // ครั้งที่ 1, 2 หรือ 3 ของสัปดาห์นั้น
+  imageUrl     String // URL รูปภาพหลักฐานการออกกำลังกาย
+  note         String? // ข้อความเพิ่มเติมจากผู้สูงอายุ
+  createdAt    DateTime @default(now())
+
+  @@index([userId, weekNumber])
+}
+
+// ==========================================
+// 4. ระบบลูกเต๋าและประวัติการเล่น (Game Logic & History)
+// ==========================================
+model DiceInventory {
+  id        String @id @default(cuid())
+  userId    String @unique
+  user      User   @relation(fields: [userId], references: [id])
+  diceCount Int    @default(0) // จำนวนสิทธิ์การทอยลูกเต๋าที่มีอยู่
+}
+
+model GameActionLog {
+  id           String     @id @default(cuid())
+  userId       String
+  user         User       @relation(fields: [userId], references: [id])
+  actionType   ActionType // ประเภทเหตุการณ์
+  diceResult   Int? // แต้มที่ทอยได้ (1-3)
+  fromPosition Int // ตำแหน่งก่อนเดิน
+  toPosition   Int // ตำแหน่งหลังเดิน
+  description  String? // รายละเอียด เช่น "ตกช่องงู" หรือ "ขึ้นบันได"
+  createdAt    DateTime   @default(now())
+}
+
+enum ActionType {
+  EXERCISE_STEP // เดิน 1 ช่องอัตโนมัติจากการส่งผล
+  DICE_ROLL // เดินจากการทอยลูกเต๋า (เมื่อส่งครบ 3 ครั้ง/สัปดาห์)
+  SNAKE_DROP // ถูกลดตำแหน่งเพราะตกช่องงู
+  LADDER_CLIMB // ได้เพิ่มตำแหน่งเพราะขึ้นบันได
+}
+
+// ==========================================
+// 5. ระบบคะแนนและของรางวัล (Points & Rewards)
+// ==========================================
+model PointHistory {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  amount    Int // จำนวนแต้ม (+/-)
+  reason    String // เช่น "ส่งผลครั้งที่ 1 ของสัปดาห์", "แลกกระเป๋าผ้า"
+  createdAt DateTime @default(now())
+}
+
+model Reward {
+  id          String       @id @default(cuid())
+  title       String
+  description String?
+  pointCost   Int // แต้มที่ต้องใช้แลก
+  stock       Int          @default(0)
+  userRewards UserReward[]
+}
+
+model UserReward {
+  id         String   @id @default(cuid())
+  userId     String
+  rewardId   String
+  user       User     @relation(fields: [userId], references: [id])
+  reward     Reward   @relation(fields: [rewardId], references: [id])
+  isRedeemed Boolean  @default(false) // สถานะว่ามารับของไปหรือยัง
+  createdAt  DateTime @default(now())
+}
+
+// ==========================================
+// 6. ระบบแอดมิน (Admin Management)
+// ==========================================
+model Admin {
+  id        String   @id @default(cuid())
+  username  String   @unique
+  password  String // Hashed password
+  name      String // ชื่อเจ้าหน้าที่
+  role      String   @default("STAFF") // STAFF, SUPER_ADMIN
+  createdAt DateTime @default(now())
+}
