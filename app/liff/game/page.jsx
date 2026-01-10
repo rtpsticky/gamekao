@@ -321,185 +321,188 @@ function GameContent() {
         setDiceValue('🎲');
 
         // Simulate dice roll animation time
-        const roll = Math.floor(Math.random() * 3) + 1;
+        setTimeout(async () => {
+            setIsRolling(false);
+            const roll = Math.floor(Math.random() * 3) + 1;
+            setDiceValue(roll);
 
-        await movePlayer(roll); // Use the wrapper
-    }, 600);
-};
+            await movePlayer(roll); // Use the wrapper
+        }, 600);
+    };
 
-const movePlayer = async (steps) => {
-    await movePlayerInternal(currentPosition, steps);
-};
+    const movePlayer = async (steps) => {
+        await movePlayerInternal(currentPosition, steps);
+    };
 
-const checkSpecialTiles = (pos) => {
-    // No checks for snakes or ladders in this version
+    const checkSpecialTiles = (pos) => {
+        // No checks for snakes or ladders in this version
 
-    if (pos === BOARD_SIZE) {
-        setGameStatus("ยินดีด้วย! คุณชนะแล้ว!");
-        setShowWinModal(true);
-        setIsMoving(false);
-        return;
-    }
-
-    // If not win, enable move again
-    setIsMoving(false);
-};
-
-// Check Game Over (Out of moves)
-useEffect(() => {
-    if (!isMoving && movesLeft === 0 && currentPosition !== BOARD_SIZE && !showWinModal) {
-        setGameStatus("หมดสิทธิ์ทอยแล้ว! ไปส่งผลออกกำลังกายเพิ่มสิ");
-    }
-}, [movesLeft, isMoving, currentPosition, showWinModal]);
-
-
-const resetGame = () => {
-    window.location.reload();
-};
-
-
-// Generating Grid Cells
-const cells = [];
-// Loop rows from ROWS downto 1
-for (let row = ROWS; row >= 1; row--) {
-    const rowCells = [];
-    for (let col = 1; col <= COLS; col++) {
-        let num;
-        // If row is odd (1,3,5,7...) -> Left to Right (1..6)
-        // If row is even (2,4,6,8...) -> Right to Left (12..7)
-        if (row % 2 !== 0) {
-            num = (row - 1) * COLS + col;
-        } else {
-            num = (row * COLS) - col + 1;
+        if (pos === BOARD_SIZE) {
+            setGameStatus("ยินดีด้วย! คุณชนะแล้ว!");
+            setShowWinModal(true);
+            setIsMoving(false);
+            return;
         }
-        rowCells.push(num);
+
+        // If not win, enable move again
+        setIsMoving(false);
+    };
+
+    // Check Game Over (Out of moves)
+    useEffect(() => {
+        if (!isMoving && movesLeft === 0 && currentPosition !== BOARD_SIZE && !showWinModal) {
+            setGameStatus("หมดสิทธิ์ทอยแล้ว! ไปส่งผลออกกำลังกายเพิ่มสิ");
+        }
+    }, [movesLeft, isMoving, currentPosition, showWinModal]);
+
+
+    const resetGame = () => {
+        window.location.reload();
+    };
+
+
+    // Generating Grid Cells
+    const cells = [];
+    // Loop rows from ROWS downto 1
+    for (let row = ROWS; row >= 1; row--) {
+        const rowCells = [];
+        for (let col = 1; col <= COLS; col++) {
+            let num;
+            // If row is odd (1,3,5,7...) -> Left to Right (1..6)
+            // If row is even (2,4,6,8...) -> Right to Left (12..7)
+            if (row % 2 !== 0) {
+                num = (row - 1) * COLS + col;
+            } else {
+                num = (row * COLS) - col + 1;
+            }
+            rowCells.push(num);
+        }
+        // rowCells contains the numbers for this row in visual order (Left->Right)
+        cells.push(...rowCells);
     }
-    // rowCells contains the numbers for this row in visual order (Left->Right)
-    cells.push(...rowCells);
-}
 
 
-return (
-    <main className="bg-gradient-to-br from-green-50 via-teal-100 to-emerald-50 min-h-screen flex flex-col overflow-x-hidden font-sans">
-        <div className="container mx-auto max-w-5xl flex flex-col md:flex-row gap-4 md:gap-8 p-4 md:p-8 flex-grow justify-start md:justify-center items-center md:items-start">
+    return (
+        <main className="bg-gradient-to-br from-green-50 via-teal-100 to-emerald-50 min-h-screen flex flex-col overflow-x-hidden font-sans">
+            <div className="container mx-auto max-w-5xl flex flex-col md:flex-row gap-4 md:gap-8 p-4 md:p-8 flex-grow justify-start md:justify-center items-center md:items-start">
 
-            {/* Top Controls */}
-            <div id="top-controls" className="w-full md:w-auto flex flex-row md:flex-col items-center justify-center gap-4 p-4 bg-white/80 backdrop-blur-md rounded-3xl shadow-xl border border-white/50 z-40 order-1">
-                <div
-                    id="dice-container"
-                    className={`w-20 h-20 bg-white rounded-2xl flex items-center justify-center text-5xl text-slate-800 shadow-[0_8px_30px_rgb(0,0,0,0.05)] font-bold cursor-pointer transition-transform hover:scale-105 active:scale-95 border border-slate-100 shrink-0 ${isRolling ? 'animate-spin' : ''}`}
-                    onClick={!isMoving && movesLeft > 0 ? handleRollDice : undefined}
-                >
-                    {diceValue}
-                </div>
-                <div className="flex flex-col items-center gap-1">
-                    <button
-                        id="roll-btn"
-                        onClick={handleRollDice}
-                        disabled={isMoving || movesLeft <= 0}
-                        className="bg-gradient-to-r from-orange-400 to-pink-500 hover:from-orange-500 hover:to-pink-600 text-white font-bold py-3 px-6 rounded-xl text-lg shadow-lg transform transition active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 whitespace-nowrap"
+                {/* Top Controls */}
+                <div id="top-controls" className="w-full md:w-auto flex flex-row md:flex-col items-center justify-center gap-4 p-4 bg-white/80 backdrop-blur-md rounded-3xl shadow-xl border border-white/50 z-40 order-1">
+                    <div
+                        id="dice-container"
+                        className={`w-20 h-20 bg-white rounded-2xl flex items-center justify-center text-5xl text-slate-800 shadow-[0_8px_30px_rgb(0,0,0,0.05)] font-bold cursor-pointer transition-transform hover:scale-105 active:scale-95 border border-slate-100 shrink-0 ${isRolling ? 'animate-spin' : ''}`}
+                        onClick={!isMoving && movesLeft > 0 ? handleRollDice : undefined}
                     >
-                        <span>ทอยเต๋า!</span>
-                    </button>
-                    <div className="text-xs font-bold text-slate-500 bg-white/50 px-3 py-1 rounded-full border border-slate-200">
-                        เหลือ: <span className="text-orange-500 text-sm">{movesLeft}</span> ครั้ง
+                        {diceValue}
+                    </div>
+                    <div className="flex flex-col items-center gap-1">
+                        <button
+                            id="roll-btn"
+                            onClick={handleRollDice}
+                            disabled={isMoving || movesLeft <= 0}
+                            className="bg-gradient-to-r from-orange-400 to-pink-500 hover:from-orange-500 hover:to-pink-600 text-white font-bold py-3 px-6 rounded-xl text-lg shadow-lg transform transition active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 whitespace-nowrap"
+                        >
+                            <span>ทอยเต๋า!</span>
+                        </button>
+                        <div className="text-xs font-bold text-slate-500 bg-white/50 px-3 py-1 rounded-full border border-slate-200">
+                            เหลือ: <span className="text-orange-500 text-sm">{movesLeft}</span> ครั้ง
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            {/* Game Board */}
-            <div
-                id="game-container"
-                ref={containerRef}
-                className="relative w-full max-w-[540px] aspect-[3/4] mx-auto shadow-2xl rounded-3xl border-4 border-emerald-100 overflow-hidden bg-emerald-50 order-2"
-            >
-                {/* Grid */}
-                <div id="game-board" ref={boardRef} className="grid grid-cols-6 gap-1 w-full h-full p-1 relative z-10">
-                    {cells.map((num) => {
-                        let cellColorClass = 'bg-white text-slate-400';
-                        if (num % 2 === 0) cellColorClass = 'bg-emerald-50/50 text-slate-400';
-
-                        return (
-                            <div
-                                key={num}
-                                data-index={num}
-                                className={`flex items-center justify-center font-mono text-[0.8rem] rounded shadow-sm ${cellColorClass}`}
-                            >
-                                {num}
-                            </div>
-                        );
-                    })}
-                </div>
-
-                {/* Canvas Overlay - Will be transparent as no snakes/ladders are drawn */}
-                <canvas
-                    ref={canvasRef}
-                    className="absolute top-0 left-0 w-full h-full z-20 pointer-events-none"
-                />
-
-                {/* Player Token */}
+                {/* Game Board */}
                 <div
-                    id="player"
-                    ref={playerRef}
-                    className="absolute top-0 left-0 z-30 transition-transform duration-500 ease-in-out"
-                    style={{ transform: 'translate(0,0)' }} // Initial placeholder
+                    id="game-container"
+                    ref={containerRef}
+                    className="relative w-full max-w-[540px] aspect-[3/4] mx-auto shadow-2xl rounded-3xl border-4 border-emerald-100 overflow-hidden bg-emerald-50 order-2"
                 >
-                    <div className="w-8 h-8 sm:w-10 sm:h-10 bg-orange-500 rounded-full border-2 border-white shadow-lg flex items-center justify-center text-white font-bold text-xs sm:text-sm transform hover:scale-110 transition-transform">
-                        {userData?.profileImageUrl ? (
-                            <img src={userData.profileImageUrl} alt="me" className="w-full h-full rounded-full object-cover border-2 border-white" />
-                        ) : (
-                            "🏃"
-                        )}
+                    {/* Grid */}
+                    <div id="game-board" ref={boardRef} className="grid grid-cols-6 gap-1 w-full h-full p-1 relative z-10">
+                        {cells.map((num) => {
+                            let cellColorClass = 'bg-white text-slate-400';
+                            if (num % 2 === 0) cellColorClass = 'bg-emerald-50/50 text-slate-400';
+
+                            return (
+                                <div
+                                    key={num}
+                                    data-index={num}
+                                    className={`flex items-center justify-center font-mono text-[0.8rem] rounded shadow-sm ${cellColorClass}`}
+                                >
+                                    {num}
+                                </div>
+                            );
+                        })}
+                    </div>
+
+                    {/* Canvas Overlay - Will be transparent as no snakes/ladders are drawn */}
+                    <canvas
+                        ref={canvasRef}
+                        className="absolute top-0 left-0 w-full h-full z-20 pointer-events-none"
+                    />
+
+                    {/* Player Token */}
+                    <div
+                        id="player"
+                        ref={playerRef}
+                        className="absolute top-0 left-0 z-30 transition-transform duration-500 ease-in-out"
+                        style={{ transform: 'translate(0,0)' }} // Initial placeholder
+                    >
+                        <div className="w-8 h-8 sm:w-10 sm:h-10 bg-orange-500 rounded-full border-2 border-white shadow-lg flex items-center justify-center text-white font-bold text-xs sm:text-sm transform hover:scale-110 transition-transform">
+                            {userData?.profileImageUrl ? (
+                                <img src={userData.profileImageUrl} alt="me" className="w-full h-full rounded-full object-cover border-2 border-white" />
+                            ) : (
+                                "🏃"
+                            )}
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            {/* Info Section */}
-            <div className="bg-white/80 backdrop-blur-md p-8 rounded-3xl shadow-xl w-full md:w-80 border border-white/50 text-slate-700 flex flex-col items-center order-3">
-                <div className="mb-4 text-center">
-                    <span className="inline-block px-3 py-1 bg-teal-100 text-teal-700 rounded-full text-xs font-bold mb-2 tracking-wider">HEALTHY MODE</span>
-                    <h1 className="text-4xl font-extrabold mb-1 text-emerald-600 drop-shadow-sm">เก๋า ไม่ล้ม 💪</h1>
-                    <p className="text-slate-500 text-sm">สุขภาพดี สะสมแต้ม!</p>
-                </div>
+                {/* Info Section */}
+                <div className="bg-white/80 backdrop-blur-md p-8 rounded-3xl shadow-xl w-full md:w-80 border border-white/50 text-slate-700 flex flex-col items-center order-3">
+                    <div className="mb-4 text-center">
+                        <span className="inline-block px-3 py-1 bg-teal-100 text-teal-700 rounded-full text-xs font-bold mb-2 tracking-wider">HEALTHY MODE</span>
+                        <h1 className="text-4xl font-extrabold mb-1 text-emerald-600 drop-shadow-sm">เก๋า ไม่ล้ม 💪</h1>
+                        <p className="text-slate-500 text-sm">สุขภาพดี สะสมแต้ม!</p>
+                    </div>
 
-                <div className="mb-6 w-full bg-gradient-to-r from-emerald-50 to-teal-50 p-6 rounded-2xl text-center border border-emerald-100">
-                    <p className="text-emerald-600 text-xs font-bold uppercase tracking-wide mb-1">ตำแหน่งของคุณ</p>
-                    <div id="position-display" className="text-5xl font-black text-emerald-500">{currentPosition}</div>
-                </div>
+                    <div className="mb-6 w-full bg-gradient-to-r from-emerald-50 to-teal-50 p-6 rounded-2xl text-center border border-emerald-100">
+                        <p className="text-emerald-600 text-xs font-bold uppercase tracking-wide mb-1">ตำแหน่งของคุณ</p>
+                        <div id="position-display" className="text-5xl font-black text-emerald-500">{currentPosition}</div>
+                    </div>
 
-                <div className="w-full bg-white/50 p-4 rounded-xl text-sm text-slate-500 border border-slate-100">
-                    <h3 className="font-bold text-slate-700 mb-2 flex items-center gap-2">🔔 สถานะเกม</h3>
-                    <p className="leading-relaxed">{gameStatus}</p>
-                </div>
+                    <div className="w-full bg-white/50 p-4 rounded-xl text-sm text-slate-500 border border-slate-100">
+                        <h3 className="font-bold text-slate-700 mb-2 flex items-center gap-2">🔔 สถานะเกม</h3>
+                        <p className="leading-relaxed">{gameStatus}</p>
+                    </div>
 
-                <button
-                    onClick={resetGame}
-                    className="mt-6 text-slate-400 hover:text-orange-400 text-sm font-medium transition-colors"
-                >
-                    ↺ รีโหลดหน้า
-                </button>
-            </div>
-
-        </div>
-
-        {/* Win Modal */}
-        {showWinModal && (
-            <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 backdrop-blur-md">
-                <div className="bg-white p-10 rounded-3xl shadow-2xl text-center max-w-md mx-4 transform transition-all scale-100 animate-bounce border-4 border-emerald-100">
-                    <div className="text-7xl mb-6 animate-pulse">🎉</div>
-                    <h2 className="text-4xl font-extrabold text-emerald-600 mb-2">สุดยอดมาก!</h2>
-                    <p className="text-lg text-slate-600 mb-8">คุณออกกำลังกายจนถึงเส้นชัยแล้ว!</p>
                     <button
                         onClick={resetGame}
-                        className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-bold py-4 px-10 rounded-full shadow-xl transition transform hover:scale-105 active:scale-95 text-lg"
+                        className="mt-6 text-slate-400 hover:text-orange-400 text-sm font-medium transition-colors"
                     >
-                        เล่นอีกรอบ
+                        ↺ รีโหลดหน้า
                     </button>
                 </div>
+
             </div>
-        )}
-    </main>
-);
+
+            {/* Win Modal */}
+            {showWinModal && (
+                <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 backdrop-blur-md">
+                    <div className="bg-white p-10 rounded-3xl shadow-2xl text-center max-w-md mx-4 transform transition-all scale-100 animate-bounce border-4 border-emerald-100">
+                        <div className="text-7xl mb-6 animate-pulse">🎉</div>
+                        <h2 className="text-4xl font-extrabold text-emerald-600 mb-2">สุดยอดมาก!</h2>
+                        <p className="text-lg text-slate-600 mb-8">คุณออกกำลังกายจนถึงเส้นชัยแล้ว!</p>
+                        <button
+                            onClick={resetGame}
+                            className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-bold py-4 px-10 rounded-full shadow-xl transition transform hover:scale-105 active:scale-95 text-lg"
+                        >
+                            เล่นอีกรอบ
+                        </button>
+                    </div>
+                </div>
+            )}
+        </main>
+    );
 }
 
 export default function LiffGamePage() {
