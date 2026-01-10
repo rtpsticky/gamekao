@@ -70,16 +70,24 @@ model GroupMember {
 // 3. ระบบบันทึกผลการออกกำลังกาย (Exercise Logs)
 // ==========================================
 model ExerciseLog {
-  id           String   @id @default(cuid())
+  id           String          @id @default(cuid())
   userId       String
-  user         User     @relation(fields: [userId], references: [id])
+  user         User            @relation(fields: [userId], references: [id])
   weekNumber   Int // สัปดาห์ที่ 1-8
   sessionCount Int // ครั้งที่ 1, 2 หรือ 3 ของสัปดาห์นั้น
-  imageUrl     String // URL รูปภาพหลักฐานการออกกำลังกาย
+  images       ExerciseImage[] // รูปภาพหลักฐาน (1-3 รูป)
   note         String? // ข้อความเพิ่มเติมจากผู้สูงอายุ
-  createdAt    DateTime @default(now())
+  createdAt    DateTime        @default(now())
 
   @@index([userId, weekNumber])
+}
+
+model ExerciseImage {
+  id            String      @id @default(cuid())
+  exerciseLogId String
+  exerciseLog   ExerciseLog @relation(fields: [exerciseLogId], references: [id])
+  imageUrl      String
+  createdAt     DateTime    @default(now())
 }
 
 // ==========================================
