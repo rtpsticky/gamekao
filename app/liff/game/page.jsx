@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, Suspense } from 'react';
 import liff from '@line/liff';
 import { useSearchParams } from 'next/navigation';
-import { getUserGameData } from '@/app/actions/game';
+import { getUserGameData, saveDiceRoll } from '@/app/actions/game';
 
 // Game Configuration
 const BOARD_SIZE = 48;
@@ -44,7 +44,7 @@ function GameContent() {
                 return;
             }
 
-            setUserData(data);
+            setUserData({ ...data, lineUserId: userId });
             setMovesLeft(data.diceCount);
 
             // Logic for "Walking 1 step" animation
@@ -326,7 +326,16 @@ function GameContent() {
             const roll = Math.floor(Math.random() * 3) + 1;
             setDiceValue(roll);
 
-            await movePlayer(roll); // Use the wrapper
+            await movePlayer(roll);
+
+            if (userData?.lineUserId) {
+                const result = await saveDiceRoll(userData.lineUserId, roll);
+                if (result.error) {
+                    console.error("Save error:", result.error);
+                } else {
+                    console.log("Progress saved:", result.newPosition);
+                }
+            }
         }, 600);
     };
 
