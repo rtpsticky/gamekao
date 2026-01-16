@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import liff from '@line/liff';
 import Swal from 'sweetalert2';
 import { submitExercise } from '@/app/actions/exercise';
+import { getUserGameData } from '@/app/actions/game';
 
 export default function ExerciseSubmissionPage() {
     const [lineProfile, setLineProfile] = useState(null);
@@ -12,6 +13,8 @@ export default function ExerciseSubmissionPage() {
     const [note, setNote] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [liffError, setLiffError] = useState(null);
+    const [isInactive, setIsInactive] = useState(false);
+    const [noGroup, setNoGroup] = useState(false);
 
     useEffect(() => {
         // Initialize LIFF
@@ -25,6 +28,14 @@ export default function ExerciseSubmissionPage() {
                 } else {
                     const profile = await liff.getProfile();
                     setLineProfile(profile);
+
+                    // Check User Status
+                    const userData = await getUserGameData(profile.userId);
+                    if (userData.error === "ACCOUNT_INACTIVE") {
+                        setIsInactive(true);
+                    } else if (userData.error === "NO_GROUP") {
+                        setNoGroup(true);
+                    }
                 }
             })
             .catch((err) => {
@@ -113,6 +124,32 @@ export default function ExerciseSubmissionPage() {
                 <h1 className="text-xl font-bold">LIFF Error</h1>
                 <p>{liffError}</p>
                 <p className="text-sm mt-2">โปรดเปิดลิ้งค์นี้ผ่านแอป LINE</p>
+            </div>
+        );
+    }
+
+    if (isInactive) {
+        return (
+            <div className="fixed inset-0 z-[100] bg-white flex flex-col items-center justify-center p-6 text-center font-sans">
+                <div className="w-24 h-24 bg-red-100 rounded-full flex items-center justify-center mb-6 animate-bounce">
+                    <svg className="w-12 h-12 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                </div>
+                <h2 className="text-2xl font-bold text-slate-800 mb-2">บัญชีถูกระงับ</h2>
+                <p className="text-slate-500">บัญชีของคุณถูกระงับการใช้งานชั่วคราว<br />กรุณาติดต่อเจ้าหน้าที่</p>
+            </div>
+        );
+    }
+
+    if (noGroup) {
+        return (
+            <div className="fixed inset-0 z-[100] bg-white flex flex-col items-center justify-center p-6 text-center font-sans">
+                <div className="w-24 h-24 bg-orange-100 rounded-full flex items-center justify-center mb-6">
+                    <span className="text-4xl">⏳</span>
+                </div>
+                <h2 className="text-2xl font-bold text-slate-800 mb-2">รอการเข้ากลุ่ม</h2>
+                <p className="text-slate-500">กรุณารอเจ้าหน้าที่ดึงเข้ากลุ่มเพื่อเริ่มเล่น</p>
             </div>
         );
     }

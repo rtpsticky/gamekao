@@ -19,6 +19,7 @@ function GameContent() {
     const searchParams = useSearchParams();
     const action = searchParams.get('action');
 
+    // State
     const [currentPosition, setCurrentPosition] = useState(1);
     const [movesLeft, setMovesLeft] = useState(0);
     const [isMoving, setIsMoving] = useState(false);
@@ -28,9 +29,16 @@ function GameContent() {
     const [isRolling, setIsRolling] = useState(false);
     const [liffError, setLiffError] = useState(null);
     const [userData, setUserData] = useState(null);
+    const [isInactive, setIsInactive] = useState(false);
+    const [noGroup, setNoGroup] = useState(false);
 
     const containerRef = useRef(null);
     const boardRef = useRef(null);
+
+    // ... (rest of code)
+
+    // Blocking UI
+
     const canvasRef = useRef(null);
     const playerRef = useRef(null);
 
@@ -39,6 +47,14 @@ function GameContent() {
         try {
             const data = await getUserGameData(userId);
             if (data.error) {
+                if (data.error === "ACCOUNT_INACTIVE") {
+                    setIsInactive(true);
+                    return;
+                }
+                if (data.error === "NO_GROUP") {
+                    setNoGroup(true);
+                    return;
+                }
                 console.error(data.error);
                 setGameStatus("ไม่พบข้อมูลผู้เล่น");
                 return;
@@ -48,32 +64,22 @@ function GameContent() {
             setMovesLeft(data.diceCount);
 
             // Logic for "Walking 1 step" animation
-            // If action is exercise, we assume they JUST walked 1 step.
-            // So previous position was (data.currentPosition - 1).
-            // But if they are at 0 or 1, might be edge case. 
-            // Also need to check if they actually gained a position? 
-            // Lets trust the DB position.
-
             if (action === 'exercise') {
                 const targetPos = data.currentPosition;
-                const startPos = Math.max(1, targetPos - 1); // Ensure we don't start below 1
+                const startPos = Math.max(1, targetPos - 1);
 
-                // Set initial visual position to startPos
                 setCurrentPosition(startPos);
 
                 if (targetPos > startPos) {
                     setGameStatus("รับแต้มจากการออกกำลังกาย... เดิน 1 ช่อง!");
-                    // Trigger walk animation after a short delay
                     setTimeout(() => {
-                        movePlayerInternal(startPos, 1); // Move 1 step
+                        movePlayerInternal(startPos, 1);
                     }, 1000);
                 } else {
-                    // Already at same pos (maybe maxed out?)
                     setCurrentPosition(targetPos);
                     setGameStatus("คุณอยู่ที่เส้นชัยแล้ว!");
                 }
             } else {
-                // Normal load
                 setCurrentPosition(Math.max(1, data.currentPosition));
                 setGameStatus("พร้อมลุย! กดปุ่มเพื่อทอยเต๋า");
             }
@@ -83,6 +89,11 @@ function GameContent() {
             setGameStatus("เกิดข้อผิดพลาดในการโหลดข้อมูล");
         }
     };
+
+    // ... (rest of effects)
+
+
+
 
 
     useEffect(() => {
@@ -390,6 +401,33 @@ function GameContent() {
         cells.push(...rowCells);
     }
 
+
+    // Blocking UI
+    if (isInactive) {
+        return (
+            <div className="fixed inset-0 z-[100] bg-white flex flex-col items-center justify-center p-6 text-center font-sans">
+                <div className="w-24 h-24 bg-red-100 rounded-full flex items-center justify-center mb-6 animate-bounce">
+                    <svg className="w-12 h-12 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                </div>
+                <h2 className="text-2xl font-bold text-slate-800 mb-2">บัญชีถูกระงับ</h2>
+                <p className="text-slate-500">บัญชีของคุณถูกระงับการใช้งานชั่วคราว<br />กรุณาติดต่อเจ้าหน้าที่</p>
+            </div>
+        );
+    }
+
+    if (noGroup) {
+        return (
+            <div className="fixed inset-0 z-[100] bg-white flex flex-col items-center justify-center p-6 text-center font-sans">
+                <div className="w-24 h-24 bg-orange-100 rounded-full flex items-center justify-center mb-6">
+                    <span className="text-4xl">⏳</span>
+                </div>
+                <h2 className="text-2xl font-bold text-slate-800 mb-2">รอการเข้ากลุ่ม</h2>
+                <p className="text-slate-500">กรุณารอเจ้าหน้าที่ดึงเข้ากลุ่มเพื่อเริ่มเล่น</p>
+            </div>
+        );
+    }
 
     return (
         <main className="bg-gradient-to-br from-green-50 via-teal-100 to-emerald-50 min-h-screen flex flex-col overflow-x-hidden font-sans">

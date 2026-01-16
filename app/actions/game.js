@@ -10,19 +10,46 @@ export async function getUserGameData(lineUserId) {
     try {
         const user = await prisma.user.findUnique({
             where: { lineUserId },
-            include: { diceInventory: true } // Include dice info
+            include: {
+                diceInventory: true,
+                groups: {
+                    where: { group: { isActive: true } },
+                    include: { group: true },
+                    orderBy: { group: { createdAt: 'desc' } }, // Priority: Most recently created active group
+                    take: 1
+                }
+            }
         });
 
         if (!user) {
             return { error: "User not found" };
         }
 
+        if (user.isActive === false) {
+            return { error: "ACCOUNT_INACTIVE" };
+        }
+
+        // Check if user is in any active group
+        if (!user.groups || user.groups.length === 0) {
+            return { error: "NO_GROUP" };
+        }
+
+        const activeGroup = user.groups[0].group;
+
         return {
-            currentPosition: user.currentPosition || 0, // Default 0 if null, but schema says default 0
+            currentPosition: user.currentPosition || 0,
             diceCount: user.diceInventory?.diceCount || 0,
             displayName: user.displayName,
             profileImageUrl: user.profileImageUrl,
-            userId: user.id // Need internal ID for updates
+            userId: user.id,
+            isActive: user.isActive,
+            // Group Info
+            group: {
+                id: activeGroup.id,
+                name: activeGroup.name,
+                startDate: activeGroup.startDate,
+                endDate: activeGroup.endDate
+            }
         };
 
     } catch (error) {

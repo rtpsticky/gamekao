@@ -42,6 +42,22 @@ export async function submitExercise(formData) {
             return { error: "ไม่พบผู้ใช้ในระบบ กรุณาลงทะเบียนก่อน" };
         }
 
+        if (user.isActive === false) {
+            return { error: "บัญชีของคุณถูกระงับการใช้งานชั่วคราว กรุณาติดต่อเจ้าหน้าที่" };
+        }
+
+        // Check active group membership
+        const activeGroupMember = await prisma.groupMember.findFirst({
+            where: {
+                userId: user.id,
+                group: { isActive: true }
+            }
+        });
+
+        if (!activeGroupMember) {
+            return { error: "NO_GROUP" };
+        }
+
         // --- Logic: Date & Week Calculation ---
         const now = new Date();
         const currentWeekNumber = getISOWeek(now);

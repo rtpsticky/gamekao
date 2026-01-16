@@ -34,18 +34,44 @@ async function ensureRewardsExist() {
     }
 }
 
+// Helper to get active group for a user
+async function getUserActiveGroup(userId) {
+    const groupMember = await prisma.groupMember.findFirst({
+        where: { userId, group: { isActive: true } },
+        orderBy: { group: { createdAt: 'desc' } }, // Use most recent group
+        include: { group: true }
+    });
+    return groupMember?.group || null;
+}
+
 export async function getLeaderboardData(lineUserId) {
     if (!lineUserId) return { error: "No Line User ID" };
 
     try {
         const currentUser = await prisma.user.findUnique({
             where: { lineUserId },
-            select: { id: true, points: true, displayName: true, profileImageUrl: true }
+            select: { id: true, points: true, displayName: true, profileImageUrl: true, isActive: true }
         });
 
         if (!currentUser) return { error: "User not found" };
+        if (currentUser.isActive === false) return { error: "ACCOUNT_INACTIVE" };
+
+        // Determine scope: Group vs Global
+        const activeGroup = await getUserActiveGroup(currentUser.id);
+
+        if (!activeGroup) {
+            return { error: "NO_GROUP" };
+        }
+
+        const whereCondition = {
+            isActive: true, // Only active users show on leaderboard
+            groups: {
+                some: { groupId: activeGroup.id }
+            }
+        };
 
         const allUsers = await prisma.user.findMany({
+            where: whereCondition,
             select: {
                 id: true,
                 displayName: true,
@@ -63,15 +89,33 @@ export async function getLeaderboardData(lineUserId) {
             isMe: u.id === currentUser.id
         }));
 
-        const myRankEntry = leaderboard.find(u => u.id === currentUser.id) || {
-            rank: await prisma.user.count({ where: { points: { gt: currentUser.points } } }) + 1,
-            ...currentUser,
-            isMe: true
-        };
+        let myRankEntry = leaderboard.find(u => u.id === currentUser.id);
+
+        // If user is not in top 100, fetch their specific rank count
+        if (!myRankEntry) {
+            const higherPointsCount = await prisma.user.count({
+                where: {
+                    ...whereCondition,
+                    points: { gt: currentUser.points }
+                }
+            });
+
+            myRankEntry = {
+                rank: higherPointsCount + 1,
+                ...currentUser,
+                isMe: true
+            };
+        }
 
         return {
             leaderboard: leaderboard.slice(0, 20), // Return top 20 for display
-            myStats: myRankEntry
+            myStats: myRankEntry,
+            group: { // Return group info
+                id: activeGroup.id,
+                name: activeGroup.name,
+                startDate: activeGroup.startDate,
+                endDate: activeGroup.endDate
+            }
         };
 
     } catch (error) {
@@ -92,51 +136,64 @@ export async function getRewardsData(lineUserId) {
         });
 
         if (!user) return { error: "User not found" };
+        if (user.isActive === false) return { error: "ACCOUNT_INACTIVE" };
 
-        // Determine User Rank for unlocking logic
+        // Determine User Rank for unlocking logic (Scoped to Group)
+        const activeGroup = await getUserActiveGroup(user.id);
+
+        if (!activeGroup) {
+            return { error: "NO_GROUP" };
+        }
+
+        const whereCondition = {
+            isActive: true,
+            groups: { some: { groupId: activeGroup.id } }
+        };
+
         // Count users with strictly more points to get rank (1-based)
         const rank = await prisma.user.count({
-            where: { points: { gt: user.points } }
+            where: {
+                ...whereCondition,
+                points: { gt: user.points }
+            }
         }) + 1;
 
-        const rewards = await prisma.reward.findMany({
-            orderBy: { title: 'asc' } // Simple ordering, or add a 'tier' field to schema if needed
+        // Fetch Rewards
+        const rewards = await prisma.reward.findMany();
+
+        // Custom Sort: Gold -> Silver -> Bronze -> Others
+        rewards.sort((a, b) => {
+            const getScore = (title) => {
+                if (title.includes("ทอง") && !title.includes("แดง")) return 1; // Gold
+                if (title.includes("เงิน")) return 2; // Silver
+                if (title.includes("ทองแดง")) return 3; // Bronze
+                return 4; // Other
+            };
+            return getScore(a.title) - getScore(b.title);
         });
 
-        // Map rewards to include status based on rank
-        // Logic: 
-        // Reward 1 (Top Tier): Rank 1-10
-        // Reward 2 (Mid Tier): Rank 11-50
-        // Reward 3 (Low Tier): Rank 51+
-
-        // We need to identify which reward is which. 
-        // Since we don't have a 'tier' field, we'll assume order or title.
-        // For robustness, let's sort by STOCK (assuming higher tier = lower stock) or just Title.
-        // Let's use string matching or index for now since we just seeded them.
-
-        // Let's refine the logic to be index based for this MVP if titles change.
-        // Assuming database returns in creation order or similar if we sort by id/title.
-        // Let's assume:
-        // Index 0 -> Gold (Rank 1-10)
-        // Index 1 -> Silver (Rank 11-50)
-        // Index 2 -> Bronze (Rank 51+)
-
-        const hasClaimedAny = user.rewards.some(r => r.isRedeemed || true); // If record exists, they claimed/selected it.
+        // Map rewards logic (Cumulative Eligibility)
+        const hasClaimedAny = user.rewards.some(r => r.isRedeemed || true);
         const claimedRewardId = user.rewards.length > 0 ? user.rewards[0].rewardId : null;
 
         const mappedRewards = rewards.map((r) => {
             let isUnlockable = false;
             let conditionText = "";
 
-            if (r.title.includes("ทอง")) {
+            if (r.title.includes("ทอง") && !r.title.includes("แดง")) {
+                // Gold Reward: Only Rank 1-10
                 isUnlockable = rank <= 10;
                 conditionText = "สำหรับลำดับที่ 1-10";
             } else if (r.title.includes("เงิน")) {
-                isUnlockable = rank >= 11 && rank <= 50;
-                conditionText = "สำหรับลำดับที่ 11-50";
+                // Silver Reward: Rank 1-50 (Cumulative: Gold users also eligible)
+                isUnlockable = rank <= 50;
+                conditionText = "สำหรับลำดับที่ 1-50";
+            } else if (r.title.includes("ทองแดง")) {
+                // Bronze Reward: For Everyone (Rank 1+) or reasonably high limit
+                isUnlockable = true;
+                conditionText = "สำหรับผู้เล่นทุกคน";
             } else {
-                isUnlockable = rank >= 51;
-                conditionText = "สำหรับลำดับที่ 51 ขึ้นไป";
+                isUnlockable = false;
             }
 
             return {
@@ -179,9 +236,17 @@ export async function claimReward(lineUserId, rewardId) {
         if (!reward) return { error: "Reward not found" };
         if (reward.stock <= 0) return { error: "Out of stock" };
 
-        // Verify Rank Requirement again
+        // Verify Rank Requirement again (Scoped)
+        const groupId = await getUserActiveGroupId(user.id);
+        const whereCondition = groupId
+            ? { groups: { some: { groupId } }, isActive: true }
+            : { isActive: true };
+
         const rank = await prisma.user.count({
-            where: { points: { gt: user.points } }
+            where: {
+                ...whereCondition,
+                points: { gt: user.points }
+            }
         }) + 1;
 
         let isUnlockable = false;

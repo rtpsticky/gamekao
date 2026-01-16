@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from 'react';
 import liff from '@line/liff';
 import { getLeaderboardData, getRewardsData, claimReward } from '@/app/actions/stats';
+import { getUserGameData } from '@/app/actions/game';
 import Swal from 'sweetalert2';
 
 function StatsContent() {
@@ -14,17 +15,20 @@ function StatsContent() {
     const [rewardLoading, setRewardLoading] = useState(false);
     const [statsLoading, setStatsLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('leaderboard'); // 'leaderboard' or 'rewards'
+    const [isInactive, setIsInactive] = useState(false);
+    const [noGroup, setNoGroup] = useState(false);
+    const [activeGroup, setActiveGroup] = useState(null);
 
     useEffect(() => {
         // Initialize LIFF
-        liff.init({ liffId: process.env.NEXT_PUBLIC_LIFF_ID_GAME || '' })
+        liff.init({ liffId: process.env.NEXT_PUBLIC_LIFF_ID_STATS || '' })
             .then(() => {
                 if (!liff.isLoggedIn()) {
                     liff.login();
                 } else {
                     liff.getProfile().then(profile => {
                         setLineUserId(profile.userId);
-                        fetchData(profile.userId);
+                        checkUserStatus(profile.userId);
                     });
                 }
             })
@@ -32,6 +36,17 @@ function StatsContent() {
                 console.error('LIFF init failed', err);
             });
     }, []);
+
+    const checkUserStatus = async (userId) => {
+        const userData = await getUserGameData(userId);
+        if (userData.error === "ACCOUNT_INACTIVE") {
+            setIsInactive(true);
+        } else if (userData.error === "NO_GROUP") {
+            setNoGroup(true);
+        } else {
+            fetchData(userId);
+        }
+    };
 
     const fetchData = async (userId) => {
         setStatsLoading(true);
@@ -44,6 +59,9 @@ function StatsContent() {
             if (lbData.leaderboard) {
                 setLeaderboard(lbData.leaderboard);
                 setMyStats(lbData.myStats);
+                if (lbData.group) {
+                    setActiveGroup(lbData.group);
+                }
             }
             if (rwData.rewards) {
                 setRewards(rwData.rewards);
@@ -54,6 +72,7 @@ function StatsContent() {
             setStatsLoading(false);
         }
     };
+
 
     const handleClaim = async (reward) => {
         if (!reward.isUnlockable) {
@@ -100,6 +119,32 @@ function StatsContent() {
         }
     };
 
+    if (isInactive) {
+        return (
+            <div className="fixed inset-0 z-[100] bg-white flex flex-col items-center justify-center p-6 text-center font-sans">
+                <div className="w-24 h-24 bg-red-100 rounded-full flex items-center justify-center mb-6 animate-bounce">
+                    <svg className="w-12 h-12 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                </div>
+                <h2 className="text-2xl font-bold text-slate-800 mb-2">บัญชีถูกระงับ</h2>
+                <p className="text-slate-500">บัญชีของคุณถูกระงับการใช้งานชั่วคราว<br />กรุณาติดต่อเจ้าหน้าที่</p>
+            </div>
+        );
+    }
+
+    if (noGroup) {
+        return (
+            <div className="fixed inset-0 z-[100] bg-white flex flex-col items-center justify-center p-6 text-center font-sans">
+                <div className="w-24 h-24 bg-orange-100 rounded-full flex items-center justify-center mb-6">
+                    <span className="text-4xl">⏳</span>
+                </div>
+                <h2 className="text-2xl font-bold text-slate-800 mb-2">รอการเข้ากลุ่ม</h2>
+                <p className="text-slate-500">กรุณารอเจ้าหน้าที่ดึงเข้ากลุ่มเพื่อเริ่มเล่น</p>
+            </div>
+        );
+    }
+
     if (statsLoading && !myStats) {
         return (
             <div className="flex flex-col items-center justify-center min-h-screen bg-emerald-50 text-emerald-600">
@@ -116,7 +161,15 @@ function StatsContent() {
                 <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-xl"></div>
                 <div className="absolute bottom-0 left-0 w-24 h-24 bg-black/5 rounded-full translate-y-1/2 -translate-x-1/2 blur-lg"></div>
 
-                <div className="relative z-10 flex flex-col items-center">
+                <div className="relative z-10 flex flex-col items-center text-center">
+                    {activeGroup && (
+                        <div className="mb-4 bg-white/20 backdrop-blur-sm rounded-xl px-4 py-2 border border-white/20">
+                            <h3 className="font-bold text-lg leading-tight mb-1">{activeGroup.name}</h3>
+                            <div className="text-xs text-emerald-100 font-medium">
+                                📅 {new Date(activeGroup.startDate).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })} - {new Date(activeGroup.endDate).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' })}
+                            </div>
+                        </div>
+                    )}
                     <div className="w-20 h-20 rounded-full border-4 border-white/30 shadow-lg overflow-hidden mb-3">
                         {myStats?.profileImageUrl ? (
                             <img src={myStats.profileImageUrl} alt="Profile" className="w-full h-full object-cover" />
@@ -145,8 +198,8 @@ function StatsContent() {
                     <button
                         onClick={() => setActiveTab('leaderboard')}
                         className={`flex-1 py-2 rounded-full text-sm font-bold transition-all ${activeTab === 'leaderboard'
-                                ? 'bg-emerald-500 text-white shadow-sm'
-                                : 'text-slate-500 hover:text-emerald-500'
+                            ? 'bg-emerald-500 text-white shadow-sm'
+                            : 'text-slate-500 hover:text-emerald-500'
                             }`}
                     >
                         🏆 อันดับ
@@ -154,8 +207,8 @@ function StatsContent() {
                     <button
                         onClick={() => setActiveTab('rewards')}
                         className={`flex-1 py-2 rounded-full text-sm font-bold transition-all ${activeTab === 'rewards'
-                                ? 'bg-emerald-500 text-white shadow-sm'
-                                : 'text-slate-500 hover:text-emerald-500'
+                            ? 'bg-emerald-500 text-white shadow-sm'
+                            : 'text-slate-500 hover:text-emerald-500'
                             }`}
                     >
                         🎁 ของรางวัล
@@ -173,14 +226,14 @@ function StatsContent() {
                             <div
                                 key={user.id}
                                 className={`flex items-center p-4 rounded-2xl shadow-sm border ${user.isMe
-                                        ? 'bg-emerald-50 border-emerald-200 ring-1 ring-emerald-300 transform scale-[1.02]'
-                                        : 'bg-white border-slate-100'
+                                    ? 'bg-emerald-50 border-emerald-200 ring-1 ring-emerald-300 transform scale-[1.02]'
+                                    : 'bg-white border-slate-100'
                                     }`}
                             >
                                 <div className={`w-8 h-8 flex items-center justify-center font-bold text-lg mr-3 ${idx === 0 ? 'text-yellow-500 text-2xl drop-shadow-sm' :
-                                        idx === 1 ? 'text-slate-400 text-xl' :
-                                            idx === 2 ? 'text-orange-400 text-xl' :
-                                                'text-slate-400 text-sm'
+                                    idx === 1 ? 'text-slate-400 text-xl' :
+                                        idx === 2 ? 'text-orange-400 text-xl' :
+                                            'text-slate-400 text-sm'
                                     }`}>
                                     {idx + 1}
                                 </div>
@@ -212,8 +265,8 @@ function StatsContent() {
                             <div
                                 key={reward.id}
                                 className={`bg-white rounded-2xl p-5 shadow-lg border relative overflow-hidden ${reward.isClaimed ? 'border-emerald-500 ring-2 ring-emerald-100' :
-                                        !reward.isUnlockable ? 'opacity-70 grayscale-[0.5] border-slate-200' :
-                                            'border-emerald-100'
+                                    !reward.isUnlockable ? 'opacity-70 grayscale-[0.5] border-slate-200' :
+                                        'border-emerald-100'
                                     }`}
                             >
                                 {reward.isClaimed && (
@@ -224,8 +277,8 @@ function StatsContent() {
 
                                 <div className="flex gap-4">
                                     <div className={`w-16 h-16 rounded-xl flex items-center justify-center text-3xl shrink-0 ${reward.title.includes('ทอง') ? 'bg-yellow-100 text-yellow-500' :
-                                            reward.title.includes('เงิน') ? 'bg-slate-100 text-slate-500' :
-                                                'bg-orange-100 text-orange-500'
+                                        reward.title.includes('เงิน') ? 'bg-slate-100 text-slate-500' :
+                                            'bg-orange-100 text-orange-500'
                                         }`}>
                                         🏆
                                     </div>
@@ -242,9 +295,9 @@ function StatsContent() {
                                     onClick={() => handleClaim(reward)}
                                     disabled={!reward.canClaim || rewardLoading}
                                     className={`w-full mt-4 py-3 rounded-xl font-bold text-sm transition-all active:scale-95 ${reward.isClaimed ? 'bg-slate-100 text-slate-400 cursor-not-allowed' :
-                                            !reward.isUnlockable ? 'bg-slate-100 text-slate-400 cursor-not-allowed' :
-                                                reward.stock <= 0 ? 'bg-red-100 text-red-500 cursor-not-allowed' :
-                                                    'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg hover:shadow-xl'
+                                        !reward.isUnlockable ? 'bg-slate-100 text-slate-400 cursor-not-allowed' :
+                                            reward.stock <= 0 ? 'bg-red-100 text-red-500 cursor-not-allowed' :
+                                                'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg hover:shadow-xl'
                                         }`}
                                 >
                                     {reward.isClaimed ? 'คุณได้รับรางวัลนี้แล้ว' :
