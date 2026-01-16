@@ -43,13 +43,8 @@ export async function submitExercise(formData) {
         }
 
         // --- Logic: Date & Week Calculation ---
-        // For simplicity, let's assume standard ISO week or just calculate based on start date if group provided.
-        // But for this requirement "1 week counts as max 3 times", we need a "Week Definition".
-        // Let's use ISO Week number for simplicity or just current week of year.
         const now = new Date();
-        const startOfYear = new Date(now.getFullYear(), 0, 1);
-        const days = Math.floor((now - startOfYear) / (24 * 60 * 60 * 1000));
-        const currentWeekNumber = Math.ceil((now.getDay() + 1 + days) / 7);
+        const currentWeekNumber = getISOWeek(now);
 
         // --- Logic: Check Daily Submission Limit ---
         const startOfDay = new Date(now.setHours(0, 0, 0, 0));
@@ -70,11 +65,15 @@ export async function submitExercise(formData) {
         }
 
         // --- Logic: Check Weekly Submission Count ---
+        const { startOfWeek, endOfWeek } = getStartAndEndOfISOWeek(now);
+
         const weeklyLogsCount = await prisma.exerciseLog.count({
             where: {
                 userId: user.id,
-                weekNumber: currentWeekNumber
-                // Ideally should filter by Year too if usage spans years, but keeping simple for now.
+                createdAt: {
+                    gte: startOfWeek,
+                    lte: endOfWeek
+                }
             }
         });
 
@@ -97,7 +96,44 @@ export async function submitExercise(formData) {
                 const filepath = path.join(uploadDir, filename);
 
                 await fs.writeFile(filepath, buffer);
-                imageUrls.push(`/uploads/exercises/${filename}`);
+                // imageUrls.push(`/uploads/exercises/${filename}`); // Moved push to inside external logic block or after to include external data
+
+
+                // --- External Upload ---
+                try {
+                    const externalFormData = new FormData();
+                    const blob = new Blob([buffer], { type: file.type });
+                    externalFormData.append('image', blob, file.name);
+
+                    const uploadRes = await fetch('https://epid-odpc2.ddc.moph.go.th/kao/uploads.php', {
+                        method: 'POST',
+                        body: externalFormData,
+                    });
+
+                    if (uploadRes.ok) {
+                        const resJson = await uploadRes.json();
+                        console.log(`Uploaded ${filename} to external server successfully.`, resJson);
+
+                        // Use the filename returned from server to construct the correct URL
+                        if (resJson.file_name) {
+                            imageUrls.push(`https://epid-odpc2.ddc.moph.go.th/kao/uploads/${resJson.file_name}`);
+                        } else {
+                            // Fallback if no filename returned (unlikely based on PHP script)
+                            imageUrls.push(`https://epid-odpc2.ddc.moph.go.th/kao/uploads/${filename}`);
+                        }
+                    } else {
+                        console.error(`Failed to upload ${filename} to external server: ${uploadRes.status} ${uploadRes.statusText}`);
+                        // Fallback to local if external fails? The user specifically asked for external URL. 
+                        // But if it fails, maybe we shouldn't save a broken link. 
+                        // Let's rely on the previous flow where we might have just used local. 
+                        // BUT, current requirement says "image_url ... use ...". 
+                        // If external fails, I should probably NOT push to imageUrls if I want to be strict, OR push local.
+                        // Let's push local as fallback:
+                        imageUrls.push(`/uploads/exercises/${filename}`);
+                    }
+                } catch (extErr) {
+                    console.error(`Error uploading ${filename} to external server:`, extErr);
+                }
             }
         }
 
@@ -176,3 +212,40 @@ export async function submitExercise(formData) {
         return { error: "เกิดข้อผิดพลาดในการบันทึกข้อมูล" };
     }
 }
+
+/**
+ * Calculates the ISO 8601 week number for a given date.
+ * @param {Date} date 
+ * @returns {number} ISO Week number
+ */
+function getISOWeek(date) {
+    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    const dayNum = d.getUTCDay() || 7;
+    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+}
+
+/**
+ * Returns the start (Monday 00:00:00) and end (Sunday 23:59:59) of the ISO week for a given date.
+ * @param {Date} date 
+ */
+function getStartAndEndOfISOWeek(date) {
+    const d = new Date(date);
+    const day = d.getDay(); // 0 (Sun) to 6 (Sat)
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is sunday
+
+    const startOfWeek = new Date(d.setDate(diff));
+    startOfWeek.setHours(0, 0, 0, 0);
+
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(startOfWeek.getDate() + 6);
+    endOfWeek.setHours(23, 59, 59, 999);
+
+    return { startOfWeek, endOfWeek };
+}
+
+
+
+
+
