@@ -138,6 +138,7 @@ model Reward {
   description String?
   pointCost   Int // แต้มที่ต้องใช้แลก
   stock       Int          @default(0)
+  order       Int          @default(0) // ลำดับการแสดงผล
   userRewards UserReward[]
 }
 
