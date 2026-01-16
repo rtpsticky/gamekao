@@ -63,10 +63,23 @@ export async function saveDiceRoll(lineUserId, steps) {
                 data: { diceCount: { decrement: 1 } }
             });
 
-            // Update Position
+            // Update Position and Points (10 points per step moved)
+            const pointsEarned = steps * 10;
             await tx.user.update({
                 where: { id: user.id },
-                data: { currentPosition: newPosition }
+                data: {
+                    currentPosition: newPosition,
+                    points: { increment: pointsEarned }
+                }
+            });
+
+            // Record Point History
+            await tx.pointHistory.create({
+                data: {
+                    userId: user.id,
+                    amount: pointsEarned,
+                    reason: `Walking ${steps} steps in game`
+                }
             });
 
             // Log Action
