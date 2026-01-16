@@ -161,39 +161,29 @@ export async function getRewardsData(lineUserId) {
         // Fetch Rewards
         const rewards = await prisma.reward.findMany();
 
-        // Custom Sort: Gold -> Silver -> Bronze -> Others
-        rewards.sort((a, b) => {
-            const getScore = (title) => {
-                if (title.includes("ทอง") && !title.includes("แดง")) return 1; // Gold
-                if (title.includes("เงิน")) return 2; // Silver
-                if (title.includes("ทองแดง")) return 3; // Bronze
-                return 4; // Other
-            };
-            return getScore(a.title) - getScore(b.title);
-        });
+        // Custom Sort: Gold -> Silver -> Bronze -> Others (Based on minRank)
+        rewards.sort((a, b) => a.minRank - b.minRank);
 
         // Map rewards logic (Cumulative Eligibility)
         const hasClaimedAny = user.rewards.some(r => r.isRedeemed || true);
         const claimedRewardId = user.rewards.length > 0 ? user.rewards[0].rewardId : null;
 
         const mappedRewards = rewards.map((r) => {
-            let isUnlockable = false;
+            let isUnlockable = true;
             let conditionText = "";
 
-            if (r.title.includes("ทอง") && !r.title.includes("แดง")) {
-                // Gold Reward: Only Rank 1-10
-                isUnlockable = rank <= 10;
-                conditionText = "สำหรับลำดับที่ 1-10";
-            } else if (r.title.includes("เงิน")) {
-                // Silver Reward: Rank 1-50 (Cumulative: Gold users also eligible)
-                isUnlockable = rank <= 50;
-                conditionText = "สำหรับลำดับที่ 1-50";
-            } else if (r.title.includes("ทองแดง")) {
-                // Bronze Reward: For Everyone (Rank 1+) or reasonably high limit
+            if (r.minRank > 0 && r.maxRank) {
+                isUnlockable = rank >= r.minRank && rank <= r.maxRank;
+                conditionText = `สำหรับลำดับที่ ${r.minRank}-${r.maxRank}`;
+            } else if (r.minRank > 0) {
+                isUnlockable = rank >= r.minRank;
+                conditionText = `สำหรับลำดับที่ ${r.minRank} ขึ้นไป`;
+            } else if (r.maxRank) {
+                isUnlockable = rank <= r.maxRank;
+                conditionText = `สำหรับลำดับที่ 1-${r.maxRank}`;
+            } else {
                 isUnlockable = true;
                 conditionText = "สำหรับผู้เล่นทุกคน";
-            } else {
-                isUnlockable = false;
             }
 
             return {
@@ -237,7 +227,7 @@ export async function claimReward(lineUserId, rewardId) {
         if (reward.stock <= 0) return { error: "Out of stock" };
 
         // Verify Rank Requirement again (Scoped)
-        const groupId = await getUserActiveGroupId(user.id);
+        const groupId = await getUserActiveGroup(user.id).then(g => g?.id);
         const whereCondition = groupId
             ? { groups: { some: { groupId } }, isActive: true }
             : { isActive: true };
@@ -249,10 +239,15 @@ export async function claimReward(lineUserId, rewardId) {
             }
         }) + 1;
 
-        let isUnlockable = false;
-        if (reward.title.includes("ทอง")) isUnlockable = rank <= 10;
-        else if (reward.title.includes("เงิน")) isUnlockable = rank >= 11 && rank <= 50;
-        else isUnlockable = rank >= 51;
+        let isUnlockable = true;
+
+        if (reward.minRank > 0 && reward.maxRank) {
+            isUnlockable = rank >= reward.minRank && rank <= reward.maxRank;
+        } else if (reward.minRank > 0) {
+            isUnlockable = rank >= reward.minRank;
+        } else if (reward.maxRank) {
+            isUnlockable = rank <= reward.maxRank;
+        }
 
         if (!isUnlockable) {
             return { error: "Rank requirement not met." };

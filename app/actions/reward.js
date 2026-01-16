@@ -33,7 +33,9 @@ export async function createReward(data) {
                 description: data.description,
                 pointCost: parseInt(data.pointCost),
                 stock: parseInt(data.stock),
-                order: parseInt(data.order) || 0
+                order: parseInt(data.order) || 0,
+                minRank: parseInt(data.minRank) || 0,
+                maxRank: data.maxRank ? parseInt(data.maxRank) : null
             }
         });
         revalidatePath('/admin/rewards');
@@ -53,7 +55,9 @@ export async function updateReward(id, data) {
                 description: data.description,
                 pointCost: parseInt(data.pointCost),
                 stock: parseInt(data.stock),
-                order: parseInt(data.order) || 0
+                order: parseInt(data.order) || 0,
+                minRank: parseInt(data.minRank) || 0,
+                maxRank: data.maxRank ? parseInt(data.maxRank) : null
             }
         });
         revalidatePath('/admin/rewards');

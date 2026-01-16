@@ -139,6 +139,8 @@ model Reward {
   pointCost   Int // แต้มที่ต้องใช้แลก
   stock       Int          @default(0)
   order       Int          @default(0) // ลำดับการแสดงผล
+  minRank     Int          @default(0) // อันดับต่ำสุดที่มีสิทธิ์ (0 = ไม่จำกัด)
+  maxRank     Int? // อันดับสูงสุดที่มีสิทธิ์ (null = ไม่จำกัด)
   userRewards UserReward[]
 }
 

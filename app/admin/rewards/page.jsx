@@ -39,7 +39,9 @@ export default function RewardsPage() {
                 description: reward.description || '',
                 pointCost: reward.pointCost,
                 stock: reward.stock,
-                order: reward.order
+                order: reward.order,
+                minRank: reward.minRank || 0,
+                maxRank: reward.maxRank || ''
             });
         } else {
             setEditingReward(null);
@@ -48,7 +50,9 @@ export default function RewardsPage() {
                 description: '',
                 pointCost: '',
                 stock: '',
-                order: ''
+                order: '',
+                minRank: '',
+                maxRank: ''
             });
         }
         setIsModalOpen(true);
@@ -77,7 +81,9 @@ export default function RewardsPage() {
             ...formData,
             pointCost: parseInt(formData.pointCost),
             stock: parseInt(formData.stock),
-            order: parseInt(formData.order)
+            order: parseInt(formData.order),
+            minRank: parseInt(formData.minRank) || 0,
+            maxRank: formData.maxRank ? parseInt(formData.maxRank) : null
         };
 
         let result;
@@ -152,6 +158,12 @@ export default function RewardsPage() {
                                 <p className="text-gray-600 text-sm mb-4 min-h-[40px] line-clamp-2">
                                     {reward.description || 'ไม่มีรายละเอียด'}
                                 </p>
+
+                                <div className="mb-2">
+                                    <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded border border-gray-200">
+                                        อันดับ: {reward.minRank || 0} - {reward.maxRank || 'ไม่จำกัด'}
+                                    </span>
+                                </div>
 
                                 <div className="flex items-center justify-between mb-4">
                                     <span className="text-sm bg-green-100 text-green-800 px-3 py-1 rounded-full font-medium">
@@ -231,6 +243,33 @@ export default function RewardsPage() {
                                     className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all h-24 resize-none"
                                     placeholder="รายละเอียดเพิ่มเติม..."
                                 />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">อันดับต่ำสุด (Min Rank)</label>
+                                    <input
+                                        type="number"
+                                        name="minRank"
+                                        value={formData.minRank || ''}
+                                        onChange={handleChange}
+                                        className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                                        placeholder="0 (ไม่จำกัด)"
+                                    />
+                                    <p className="text-xs text-gray-500 mt-1">0 หรือว่าง = ไม่จำกัด</p>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">อันดับสูงสุด (Max Rank)</label>
+                                    <input
+                                        type="number"
+                                        name="maxRank"
+                                        value={formData.maxRank || ''}
+                                        onChange={handleChange}
+                                        className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                                        placeholder="ว่าง = ไม่จำกัด"
+                                    />
+                                    <p className="text-xs text-gray-500 mt-1">ว่าง = ไม่จำกัด</p>
+                                </div>
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
