@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 
 export async function GET() {
     try {
-        const targetUrl = 'https://jefferson-penciliform-elodia.ngrok-free.dev';
+        const targetUrl = 'http://192.168.254.11:3000/';
         const response = await fetch(targetUrl);
 
         let data;
