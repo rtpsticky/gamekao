@@ -85,7 +85,7 @@ export default function RegisterPage() {
                     </div>
                     <h1 className="text-2xl font-bold text-gray-800 mb-2">คุณลงทะเบียนเรียบร้อยแล้ว</h1>
                     <p className="text-gray-600 mb-6">คุณสามารถเข้าสู่เกมได้เลย</p>
-                    <a href="/game" className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition-all duration-200 inline-block">
+                    <a href="/liff/game" className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition-all duration-200 inline-block">
                         เข้าสู่เกม
                     </a>
                 </div>
@@ -106,7 +106,7 @@ export default function RegisterPage() {
                     icon: 'success',
                     confirmButtonText: 'ตกลง'
                 }).then(() => {
-                    window.location.href = "/game";
+                    window.location.href = "/liff/game";
                 });
             } else {
                 Swal.fire({
