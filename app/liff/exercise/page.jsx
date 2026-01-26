@@ -5,6 +5,7 @@ import liff from '@line/liff';
 import Swal from 'sweetalert2';
 import { submitExercise } from '@/app/actions/exercise';
 import { getUserGameData } from '@/app/actions/game';
+import imageCompression from 'browser-image-compression';
 
 export default function ExerciseSubmissionPage() {
     const [lineProfile, setLineProfile] = useState(null);
@@ -80,11 +81,26 @@ export default function ExerciseSubmissionPage() {
         const formData = new FormData();
         formData.append('lineUserId', lineProfile.userId);
         formData.append('note', note);
-        selectedFiles.forEach(file => {
-            formData.append('images', file);
-        });
+
+        // Options for image compression
+        const options = {
+            maxSizeMB: 1,
+            maxWidthOrHeight: 1920,
+            useWebWorker: true
+        };
 
         try {
+            // Compress images before appending
+            const compressedFilesPromises = selectedFiles.map(file => imageCompression(file, options));
+            const compressedFiles = await Promise.all(compressedFilesPromises);
+
+            compressedFiles.forEach(file => {
+                formData.append('images', file);
+            });
+            // selectedFiles.forEach(file => {     <-- Remove old loop
+            //     formData.append('images', file);
+            // });
+
             const result = await submitExercise(formData);
 
             if (result.error) {
@@ -104,11 +120,9 @@ export default function ExerciseSubmissionPage() {
                     title: 'เยี่ยมมาก!',
                     text: msg,
                     confirmButtonText: 'ไปดูเกมเดิน',
+                }).then(() => {
+                    window.location.href = 'https://liff.line.me/2008850670-0gahTNEx';
                 });
-
-                // Redirect or close window?
-                // Just reset form for now or maybe redirect to game
-                // window.location.href = '/liff/game'; 
             }
         } catch (err) {
             console.error(err);

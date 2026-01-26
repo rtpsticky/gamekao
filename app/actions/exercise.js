@@ -3,8 +3,8 @@
 import { PrismaClient } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import path from "path";
-import fs from "fs/promises";
 import { v4 as uuidv4 } from "uuid";
+import { supabase } from "@/app/lib/supabase";
 
 const prisma = new PrismaClient();
 
@@ -99,56 +99,41 @@ export async function submitExercise(formData) {
             return { error: "สัปดาห์นี้คุณส่งผลครบ 3 ครั้งแล้ว เก่งมาก! พักผ่อนแล้วมาเริ่มใหม่สัปดาห์หน้านะ" };
         }
 
-        // --- Logic: Save Images ---
-        const uploadDir = path.join(process.cwd(), "public/uploads/exercises");
-        await fs.mkdir(uploadDir, { recursive: true });
-
+        // --- Logic: Upload Images to Supabase ---
         const imageUrls = [];
+        const bucketName = process.env.NEXT_PUBLIC_SUPABASE_BUCKET || 'exercises';
+
         for (const file of files) {
             if (file.size > 0 && file.name) {
-                const buffer = Buffer.from(await file.arrayBuffer());
+                const buffer = await file.arrayBuffer();
+                const fileBody = Buffer.from(buffer);
                 const ext = path.extname(file.name);
                 const filename = `${user.id}-${Date.now()}-${uuidv4()}${ext}`;
-                const filepath = path.join(uploadDir, filename);
+                const filePath = `exercises/${filename}`;
 
-                await fs.writeFile(filepath, buffer);
-                // imageUrls.push(`/uploads/exercises/${filename}`); // Moved push to inside external logic block or after to include external data
-
-
-                // --- External Upload ---
-                try {
-                    const externalFormData = new FormData();
-                    const blob = new Blob([buffer], { type: file.type });
-                    externalFormData.append('image', blob, file.name);
-
-                    const uploadRes = await fetch('https://epid-odpc2.ddc.moph.go.th/kao/uploads.php', {
-                        method: 'POST',
-                        body: externalFormData,
+                const { data, error } = await supabase
+                    .storage
+                    .from(bucketName)
+                    .upload(filePath, fileBody, {
+                        contentType: file.type,
+                        upsert: false
                     });
 
-                    if (uploadRes.ok) {
-                        const resJson = await uploadRes.json();
-                        console.log(`Uploaded ${filename} to external server successfully.`, resJson);
+                if (error) {
+                    console.error("Supabase upload error:", error);
+                    // Continue or fail? If one fails, maybe we should fail the whole request?
+                    // For now, let's log and continue, but usually we want all or nothing.
+                    // Given the loop, let's throw to go to catch block.
+                    throw new Error(`Failed to upload image: ${error.message}`);
+                }
 
-                        // Use the filename returned from server to construct the correct URL
-                        if (resJson.file_name) {
-                            imageUrls.push(`https://epid-odpc2.ddc.moph.go.th/kao/uploads/${resJson.file_name}`);
-                        } else {
-                            // Fallback if no filename returned (unlikely based on PHP script)
-                            imageUrls.push(`https://epid-odpc2.ddc.moph.go.th/kao/uploads/${filename}`);
-                        }
-                    } else {
-                        console.error(`Failed to upload ${filename} to external server: ${uploadRes.status} ${uploadRes.statusText}`);
-                        // Fallback to local if external fails? The user specifically asked for external URL. 
-                        // But if it fails, maybe we shouldn't save a broken link. 
-                        // Let's rely on the previous flow where we might have just used local. 
-                        // BUT, current requirement says "image_url ... use ...". 
-                        // If external fails, I should probably NOT push to imageUrls if I want to be strict, OR push local.
-                        // Let's push local as fallback:
-                        imageUrls.push(`/uploads/exercises/${filename}`);
-                    }
-                } catch (extErr) {
-                    console.error(`Error uploading ${filename} to external server:`, extErr);
+                const { data: publicUrlData } = supabase
+                    .storage
+                    .from(bucketName)
+                    .getPublicUrl(filePath);
+
+                if (publicUrlData && publicUrlData.publicUrl) {
+                    imageUrls.push(publicUrlData.publicUrl);
                 }
             }
         }
