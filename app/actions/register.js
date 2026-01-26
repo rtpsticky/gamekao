@@ -1,9 +1,8 @@
 "use server";
 
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/app/lib/prisma";
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-
-const prisma = new PrismaClient();
 
 export async function registerUser(formData) {
     const lineUserId = formData.get("lineUserId");

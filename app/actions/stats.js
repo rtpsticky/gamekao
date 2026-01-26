@@ -1,8 +1,7 @@
 "use server";
 
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import { prisma } from "@/app/lib/prisma";
+import { revalidatePath } from "next/cache";
 
 // Ensure default rewards exist (Lazy seeding)
 async function ensureRewardsExist() {

@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server';
 import { messagingApi } from '@line/bot-sdk';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { prisma } from '@/app/lib/prisma';
 
 const { MessagingApiClient } = messagingApi;
 

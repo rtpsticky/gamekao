@@ -1,7 +1,5 @@
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/app/lib/prisma";
 import { toggleUserStatus } from "@/app/actions/user";
-
-const prisma = new PrismaClient();
 
 export default async function UsersPage({ searchParams }) {
     const params = await searchParams;

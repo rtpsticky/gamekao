@@ -1,12 +1,10 @@
 "use server";
 
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/app/lib/prisma";
 import { revalidatePath } from "next/cache";
 import path from "path";
 import { v4 as uuidv4 } from "uuid";
 import { supabase } from "@/app/lib/supabase";
-
-const prisma = new PrismaClient();
 
 // Configuration
 const REQUIRED_SUBMISSIONS_FOR_REWARD = 3;

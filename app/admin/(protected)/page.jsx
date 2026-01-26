@@ -1,6 +1,4 @@
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import { prisma } from "@/app/lib/prisma";
 
 async function getStats() {
     const [userCount, groupCount, exerciseLogCount, totalPoints] = await Promise.all([

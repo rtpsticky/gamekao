@@ -1,8 +1,6 @@
 'use server';
 
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { prisma } from "@/app/lib/prisma";
 import { revalidatePath } from 'next/cache';
 
 export async function getRewards(query = '') {
