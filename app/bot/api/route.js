@@ -34,10 +34,18 @@ export async function POST(req) {
 }
 
 async function handleEvent(event) {
+    if (event.type === 'follow') {
+        return checkAndSendRegistrationPrompt(event);
+    }
+
     if (event.type !== 'message' || event.message.type !== 'text') {
         return Promise.resolve(null);
     }
 
+    return checkAndSendRegistrationPrompt(event);
+}
+
+async function checkAndSendRegistrationPrompt(event) {
     const userId = event.source.userId;
     if (!userId) return Promise.resolve(null);
 
