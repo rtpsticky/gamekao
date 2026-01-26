@@ -1,4 +1,6 @@
 'use server'
+"use server";
+
 import { prisma } from "@/app/lib/prisma";
 import bcrypt from "bcryptjs";
 import { SignJWT } from "jose";
