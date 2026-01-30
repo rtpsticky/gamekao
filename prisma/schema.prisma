@@ -53,18 +53,31 @@ model Group {
   isActive  Boolean   @default(true)
 
   members   GroupMember[]
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
+  exercises GroupExercise[]
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
 }
 
 model GroupMember {
   id      String @id @default(cuid())
   groupId String
   userId  String
-  group   Group  @relation(fields: [groupId], references: [id])
-  user    User   @relation(fields: [userId], references: [id])
+  group   Group  @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([groupId, userId])
+}
+
+model GroupExercise {
+  id          String   @id @default(cuid())
+  groupId     String
+  group       Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  weekNumber  Int
+  name        String
+  description String?
+  videoUrl    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 // ==========================================

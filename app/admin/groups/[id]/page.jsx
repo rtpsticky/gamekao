@@ -140,12 +140,20 @@ export default function GroupDetailsPage({ params }) {
                         </span>
                     </div>
                 </div>
-                <button
-                    onClick={handleOpenAddModal}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-bold font-lg shadow-lg shadow-blue-500/20 transition-all active:scale-95 flex items-center gap-2"
-                >
-                    <span className="text-xl">+</span> เพิ่มสมาชิก
-                </button>
+                <div className="flex flex-col sm:flex-row gap-3">
+                    <Link
+                        href={`/admin/groups/${id}/exercises`}
+                        className="bg-white hover:bg-slate-50 text-slate-600 border border-slate-200 px-6 py-3 rounded-xl font-bold font-lg shadow-sm transition-all active:scale-95 flex items-center justify-center gap-2"
+                    >
+                        <span className="text-xl">🏋️‍♀️</span> ท่าออกกำลังกาย
+                    </Link>
+                    <button
+                        onClick={handleOpenAddModal}
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-bold font-lg shadow-lg shadow-blue-500/20 transition-all active:scale-95 flex items-center justify-center gap-2"
+                    >
+                        <span className="text-xl">+</span> เพิ่มสมาชิก
+                    </button>
+                </div>
             </div>
 
             {/* Members List */}
@@ -251,8 +259,8 @@ export default function GroupDetailsPage({ params }) {
                                             key={user.id}
                                             onClick={() => toggleUserSelection(user.id)}
                                             className={`flex items-center justify-between p-3 rounded-xl cursor-pointer transition-all border ${isSelected
-                                                    ? 'bg-blue-50 border-blue-200 ring-1 ring-blue-200'
-                                                    : 'hover:bg-slate-50 border-transparent hover:border-slate-100'
+                                                ? 'bg-blue-50 border-blue-200 ring-1 ring-blue-200'
+                                                : 'hover:bg-slate-50 border-transparent hover:border-slate-100'
                                                 }`}
                                         >
                                             <div className="flex items-center gap-3">
@@ -288,8 +296,8 @@ export default function GroupDetailsPage({ params }) {
                                 onClick={handleAddSelectedInfo}
                                 disabled={selectedUserIds.size === 0}
                                 className={`px-6 py-3 rounded-xl font-bold text-white shadow-lg transition-all ${selectedUserIds.size > 0
-                                        ? 'bg-blue-600 hover:bg-blue-700 hover:scale-105 active:scale-95'
-                                        : 'bg-slate-300 cursor-not-allowed'
+                                    ? 'bg-blue-600 hover:bg-blue-700 hover:scale-105 active:scale-95'
+                                    : 'bg-slate-300 cursor-not-allowed'
                                     }`}
                             >
                                 เพิ่มเข้ากลุ่ม ({selectedUserIds.size})
