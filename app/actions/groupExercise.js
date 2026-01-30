@@ -128,20 +128,21 @@ export async function getUserCurrentWeekExercises(lineUserId) {
     }
 
     try {
-        // 1. Find User and their Group
-        // We assume a user belongs to one active group.
-        // We find the latest group member entry.
+        // 1. Find User and their Active Group
+        // We find the user and include their groups, filtering for the active one.
         const user = await prisma.user.findUnique({
             where: { lineUserId },
             include: {
-                memberOf: {
+                groups: {
+                    where: {
+                        group: {
+                            isActive: true
+                        }
+                    },
                     include: {
                         group: true
                     },
-                    orderBy: {
-                        joinedAt: 'desc'
-                    },
-                    take: 1
+                    take: 1 // Assume user is only in one active group at a time
                 }
             }
         });
@@ -150,15 +151,11 @@ export async function getUserCurrentWeekExercises(lineUserId) {
             return { error: "User not found" };
         }
 
-        if (!user.memberOf || user.memberOf.length === 0) {
-            return { error: "User is not in any group" };
+        if (!user.groups || user.groups.length === 0) {
+            return { error: "User is not in any active group" };
         }
 
-        const group = user.memberOf[0].group;
-
-        if (!group.isActive) {
-            return { error: "Group is not active" };
-        }
+        const group = user.groups[0].group;
 
         // 2. Calculate Current Week
         // Logic similar to admin/groups/page.jsx but server-side
@@ -179,7 +176,7 @@ export async function getUserCurrentWeekExercises(lineUserId) {
             currentWeek = 0;
         } else if (endDate && today > endDate) {
             // Ended
-            currentWeek = 999; // Special code for ended? Or just return empty.
+            currentWeek = 999;
         } else {
             const diffTime = today.getTime() - startDate.getTime();
             const diffDays = Math.floor(diffTime / (1000 * 3600 * 24));
@@ -197,7 +194,7 @@ export async function getUserCurrentWeekExercises(lineUserId) {
                 weekNumber: currentWeek
             },
             orderBy: {
-                createdAt: 'asc' // Or by some order field if we had one
+                createdAt: 'asc'
             }
         });
 
