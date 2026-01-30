@@ -114,6 +114,32 @@ export default function GroupsPage() {
         }
     };
 
+    const calculateCurrentWeek = (start, end) => {
+        if (!start) return '-';
+        const startDate = new Date(start);
+        const endDate = end ? new Date(end) : null;
+        const now = new Date();
+
+        // Reset hours to compare dates only
+        startDate.setHours(0, 0, 0, 0);
+        now.setHours(0, 0, 0, 0);
+        if (endDate) endDate.setHours(23, 59, 59, 999);
+
+        if (now < startDate) {
+            return 'ยังไม่เริ่ม';
+        }
+
+        if (endDate && now > endDate) {
+            return 'จบโครงการแล้ว';
+        }
+
+        const diffTime = now.getTime() - startDate.getTime();
+        const diffDays = Math.floor(diffTime / (1000 * 3600 * 24));
+        const week = Math.floor(diffDays / 7) + 1;
+
+        return `Week ${week}`;
+    };
+
     return (
         <div className="p-6 max-w-7xl mx-auto space-y-8 font-sans">
             {/* Header */}
@@ -182,11 +208,16 @@ export default function GroupsPage() {
                                 <div className="space-y-3 text-sm text-slate-500">
                                     <div className="flex items-center gap-2">
                                         <span className="text-lg">🗓️</span>
-                                        <span>
-                                            {group.startDate ? new Date(group.startDate).toLocaleDateString('th-TH') : '-'}
-                                            {' -> '}
-                                            {group.endDate ? new Date(group.endDate).toLocaleDateString('th-TH') : '-'}
-                                        </span>
+                                        <div className="flex flex-col">
+                                            <span>
+                                                {group.startDate ? new Date(group.startDate).toLocaleDateString('th-TH') : '-'}
+                                                {' -> '}
+                                                {group.endDate ? new Date(group.endDate).toLocaleDateString('th-TH') : '-'}
+                                            </span>
+                                            <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md w-fit mt-1">
+                                                {calculateCurrentWeek(group.startDate, group.endDate)}
+                                            </span>
+                                        </div>
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <span className="text-lg">👥</span>
