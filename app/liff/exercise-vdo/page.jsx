@@ -111,26 +111,7 @@ export default function LiffExerciseVdoPage() {
 
     const currentExercise = exercises[currentExerciseIndex];
 
-    // Helper to extract YouTube ID if needed or just use Embed URL
-    // Provided links might be normal youtube links e.g. https://www.youtube.com/watch?v=VIDEO_ID
-    // We need embed url: https://www.youtube.com/embed/VIDEO_ID
-    const getEmbedUrl = (url) => {
-        if (!url) return '';
-        let videoId = '';
-        try {
-            if (url.includes('youtube.com/watch?v=')) {
-                videoId = url.split('v=')[1].split('&')[0];
-            } else if (url.includes('youtu.be/')) {
-                videoId = url.split('youtu.be/')[1].split('?')[0];
-            }
-            if (videoId) {
-                return `https://www.youtube.com/embed/${videoId}?loop=1&playlist=${videoId}&autoplay=1&mute=1`; // Muted and Autoplay
-            }
-        } catch (e) {
-            console.error('Error parsing video URL', e);
-        }
-        return url; // Return original if parsing fails, though embed might not work
-    };
+
 
     return (
         <div className="min-h-screen bg-white flex flex-col font-sans">
@@ -150,14 +131,16 @@ export default function LiffExerciseVdoPage() {
                 {/* Video Player */}
                 <div className="relative w-full pt-[56.25%] bg-slate-100 rounded-2xl overflow-hidden shadow-md border border-slate-100">
                     {currentExercise.videoUrl ? (
-                        <iframe
-                            className="absolute top-0 left-0 w-full h-full"
-                            src={getEmbedUrl(currentExercise.videoUrl)}
+                        <video
+                            className="absolute top-0 left-0 w-full h-full object-cover"
+                            src={currentExercise.videoUrl}
                             title={currentExercise.name}
-                            frameBorder="0"
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                            allowFullScreen
-                        ></iframe>
+                            muted
+                            controls
+                            playsInline
+                            autoPlay
+                            loop
+                        />
                     ) : (
                         <div className="absolute inset-0 flex items-center justify-center text-slate-400 bg-slate-100">
                             ไม่มีวิดีโอ
@@ -183,8 +166,8 @@ export default function LiffExerciseVdoPage() {
                         onClick={handlePrev}
                         disabled={currentExerciseIndex === 0}
                         className={`flex-1 py-3 rounded-xl font-bold transition-all ${currentExerciseIndex === 0
-                                ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
-                                : 'bg-white border-2 border-slate-200 text-slate-600 hover:bg-slate-50 active:scale-95'
+                            ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                            : 'bg-white border-2 border-slate-200 text-slate-600 hover:bg-slate-50 active:scale-95'
                             }`}
                     >
                         ย้อนกลับ
