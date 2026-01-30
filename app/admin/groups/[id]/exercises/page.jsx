@@ -123,6 +123,18 @@ export default function GroupExercisesPage({ params }) {
         }
     };
 
+    const [expandedWeeks, setExpandedWeeks] = useState(new Set([1])); // Default expand week 1
+
+    const toggleWeek = (week) => {
+        const newExpanded = new Set(expandedWeeks);
+        if (newExpanded.has(week)) {
+            newExpanded.delete(week);
+        } else {
+            newExpanded.add(week);
+        }
+        setExpandedWeeks(newExpanded);
+    };
+
     const groupedExercises = exercises.reduce((acc, curr) => {
         if (!acc[curr.weekNumber]) {
             acc[curr.weekNumber] = [];
@@ -189,54 +201,68 @@ export default function GroupExercisesPage({ params }) {
                     </button>
                 </div>
             ) : (
-                <div className="space-y-8">
-                    {sortedWeeks.map(week => (
-                        <div key={week} className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
-                            <div className="bg-slate-50/80 px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-                                <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                                    <span className="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-lg text-sm">Week {week}</span>
-                                    <span>สัปดาห์ที่ {week}</span>
-                                </h2>
-                            </div>
-                            <div className="divide-y divide-slate-50">
-                                {groupedExercises[week].map((exercise) => (
-                                    <div key={exercise.id} className="p-6 hover:bg-slate-50 transition-colors flex flex-col md:flex-row gap-4 justify-between items-start md:items-center group">
-                                        <div className="flex-1">
-                                            <h3 className="text-lg font-bold text-slate-800 mb-1">{exercise.name}</h3>
-                                            {exercise.description && (
-                                                <p className="text-slate-500 text-sm mb-2">{exercise.description}</p>
-                                            )}
-                                            {exercise.videoUrl && (
-                                                <a
-                                                    href={exercise.videoUrl}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="inline-flex items-center gap-1 text-xs font-bold text-red-500 bg-red-50 px-2 py-1 rounded-md hover:bg-red-100 transition-colors"
-                                                >
-                                                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z" /></svg>
-                                                    ดูวิดีโอ
-                                                </a>
-                                            )}
-                                        </div>
-                                        <div className="flex items-center gap-2 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <button
-                                                onClick={() => handleOpenModal(exercise)}
-                                                className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                                            >
-                                                ✏️ แก้ไข
-                                            </button>
-                                            <button
-                                                onClick={() => handleDelete(exercise.id)}
-                                                className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                                            >
-                                                🗑️ ลบ
-                                            </button>
-                                        </div>
+                <div className="space-y-4">
+                    {sortedWeeks.map(week => {
+                        const isExpanded = expandedWeeks.has(Number(week));
+                        return (
+                            <div key={week} className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+                                <div
+                                    className="bg-slate-50/80 px-6 py-4 border-b border-slate-100 flex items-center justify-between cursor-pointer hover:bg-slate-100 transition-colors"
+                                    onClick={() => toggleWeek(Number(week))}
+                                >
+                                    <h2 className="text-xl font-bold text-slate-800 flex items-center gap-3">
+                                        <span className="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-lg text-sm">Week {week}</span>
+                                        <span>สัปดาห์ที่ {week}</span>
+                                        <span className="text-sm font-normal text-slate-500">({groupedExercises[week].length} ท่า)</span>
+                                    </h2>
+                                    <div className={`transform transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}>
+                                        <svg className="w-6 h-6 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                        </svg>
                                     </div>
-                                ))}
+                                </div>
+                                {isExpanded && (
+                                    <div className="divide-y divide-slate-50 animate-in slide-in-from-top-2 duration-200">
+                                        {groupedExercises[week].map((exercise) => (
+                                            <div key={exercise.id} className="p-6 hover:bg-slate-50 transition-colors flex flex-col md:flex-row gap-4 justify-between items-start md:items-center group">
+                                                <div className="flex-1">
+                                                    <h3 className="text-lg font-bold text-slate-800 mb-1">{exercise.name}</h3>
+                                                    {exercise.description && (
+                                                        <p className="text-slate-500 text-sm mb-2">{exercise.description}</p>
+                                                    )}
+                                                    {exercise.videoUrl && (
+                                                        <a
+                                                            href={exercise.videoUrl}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="inline-flex items-center gap-1 text-xs font-bold text-red-500 bg-red-50 px-2 py-1 rounded-md hover:bg-red-100 transition-colors"
+                                                        >
+                                                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z" /></svg>
+                                                            ดูวิดีโอ
+                                                        </a>
+                                                    )}
+                                                </div>
+                                                <div className="flex items-center gap-2 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); handleOpenModal(exercise); }}
+                                                        className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                                                    >
+                                                        ✏️ แก้ไข
+                                                    </button>
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); handleDelete(exercise.id); }}
+                                                        className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                                    >
+                                                        🗑️ ลบ
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
             )}
 
