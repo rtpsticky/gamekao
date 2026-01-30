@@ -111,6 +111,12 @@ export default function LiffExerciseVdoPage() {
 
     const currentExercise = exercises[currentExerciseIndex];
 
+    // Helper to construct Google Drive Embed URL from ID
+    const getEmbedUrl = (id) => {
+        if (!id) return '';
+        return `https://drive.google.com/file/d/${id}/preview`;
+    };
+
 
 
     return (
@@ -131,16 +137,14 @@ export default function LiffExerciseVdoPage() {
                 {/* Video Player */}
                 <div className="relative w-full pt-[56.25%] bg-slate-100 rounded-2xl overflow-hidden shadow-md border border-slate-100">
                     {currentExercise.videoUrl ? (
-                        <video
-                            className="absolute top-0 left-0 w-full h-full object-cover"
-                            src={`https://drive.google.com/uc?export=download&id=${currentExercise.videoUrl}`}
+                        <iframe
+                            className="absolute top-0 left-0 w-full h-full"
+                            src={getEmbedUrl(currentExercise.videoUrl)}
                             title={currentExercise.name}
-                            muted
-                            controls
-                            playsInline
-                            autoPlay
-                            loop
-                        />
+                            frameBorder="0"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowFullScreen
+                        ></iframe>
                     ) : (
                         <div className="absolute inset-0 flex items-center justify-center text-slate-400 bg-slate-100">
                             ไม่มีวิดีโอ
