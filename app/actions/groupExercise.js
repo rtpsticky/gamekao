@@ -121,3 +121,95 @@ export async function copyWeekExercises(groupId, sourceWeek, targetWeek) {
         return { error: "Failed to copy exercises" };
     }
 }
+
+export async function getUserCurrentWeekExercises(lineUserId) {
+    if (!lineUserId) {
+        return { error: "User not identified" };
+    }
+
+    try {
+        // 1. Find User and their Group
+        // We assume a user belongs to one active group.
+        // We find the latest group member entry.
+        const user = await prisma.user.findUnique({
+            where: { lineUserId },
+            include: {
+                memberOf: {
+                    include: {
+                        group: true
+                    },
+                    orderBy: {
+                        joinedAt: 'desc'
+                    },
+                    take: 1
+                }
+            }
+        });
+
+        if (!user) {
+            return { error: "User not found" };
+        }
+
+        if (!user.memberOf || user.memberOf.length === 0) {
+            return { error: "User is not in any group" };
+        }
+
+        const group = user.memberOf[0].group;
+
+        if (!group.isActive) {
+            return { error: "Group is not active" };
+        }
+
+        // 2. Calculate Current Week
+        // Logic similar to admin/groups/page.jsx but server-side
+        const startDate = new Date(group.startDate);
+        const endDate = group.endDate ? new Date(group.endDate) : null;
+        const now = new Date();
+
+        // Normalize time to midnight for comparison
+        startDate.setHours(0, 0, 0, 0);
+        const today = new Date(now);
+        today.setHours(0, 0, 0, 0);
+        if (endDate) endDate.setHours(23, 59, 59, 999);
+
+        let currentWeek = 0;
+
+        if (today < startDate) {
+            // Not started yet
+            currentWeek = 0;
+        } else if (endDate && today > endDate) {
+            // Ended
+            currentWeek = 999; // Special code for ended? Or just return empty.
+        } else {
+            const diffTime = today.getTime() - startDate.getTime();
+            const diffDays = Math.floor(diffTime / (1000 * 3600 * 24));
+            currentWeek = Math.floor(diffDays / 7) + 1;
+        }
+
+        if (currentWeek === 0) {
+            return { message: "Group has not started yet", exercises: [] };
+        }
+
+        // 3. Fetch Exercises for current week
+        const exercises = await prisma.groupExercise.findMany({
+            where: {
+                groupId: group.id,
+                weekNumber: currentWeek
+            },
+            orderBy: {
+                createdAt: 'asc' // Or by some order field if we had one
+            }
+        });
+
+        return {
+            success: true,
+            exercises,
+            week: currentWeek,
+            groupName: group.name
+        };
+
+    } catch (error) {
+        console.error("Error fetching user exercises:", error);
+        return { error: "Internal server error" };
+    }
+}
