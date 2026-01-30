@@ -32,6 +32,12 @@ export default function ExerciseSubmissionPage() {
 
                     // Check User Status
                     const userData = await getUserGameData(profile.userId);
+
+                    if (userData.error === "User not found") {
+                        window.location.href = '/register';
+                        return;
+                    }
+
                     if (userData.error === "ACCOUNT_INACTIVE") {
                         setIsInactive(true);
                     } else if (userData.error === "NO_GROUP") {
