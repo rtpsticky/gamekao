@@ -122,6 +122,26 @@ export async function copyWeekExercises(groupId, sourceWeek, targetWeek) {
     }
 }
 
+export async function deleteWeekExercises(groupId, weekNumber) {
+    if (!groupId || !weekNumber) {
+        return { error: "Missing required fields" };
+    }
+
+    try {
+        await prisma.groupExercise.deleteMany({
+            where: {
+                groupId,
+                weekNumber: parseInt(weekNumber)
+            }
+        });
+        revalidatePath(`/admin/groups/${groupId}`);
+        return { success: true };
+    } catch (error) {
+        console.error("Error deleting week exercises:", error);
+        return { error: "Failed to delete week exercises" };
+    }
+}
+
 export async function getUserCurrentWeekExercises(lineUserId) {
     if (!lineUserId) {
         return { error: "User not identified" };

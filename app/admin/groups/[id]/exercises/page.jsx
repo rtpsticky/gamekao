@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, use } from 'react';
-import { getGroupExercises, createGroupExercise, updateGroupExercise, deleteGroupExercise, copyWeekExercises } from '@/app/actions/groupExercise';
+import { getGroupExercises, createGroupExercise, updateGroupExercise, deleteGroupExercise, copyWeekExercises, deleteWeekExercises } from '@/app/actions/groupExercise';
 import { getGroupDetails } from '@/app/actions/group';
 import Swal from 'sweetalert2';
 import Link from 'next/link';
@@ -159,6 +159,34 @@ export default function GroupExercisesPage({ params }) {
         }
     };
 
+    const handleDeleteWeek = async (week, e) => {
+        e.stopPropagation();
+        const result = await Swal.fire({
+            title: `ลบท่า Week ${week}?`,
+            text: "ท่าทั้งหมดในสัปดาห์นี้จะถูกลบถาวร",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'ลบทั้งหมด',
+            cancelButtonText: 'ยกเลิก'
+        });
+
+        if (result.isConfirmed) {
+            const res = await deleteWeekExercises(id, week);
+            if (res.success) {
+                Swal.fire('ลบเรียบร้อย', '', 'success');
+                // Remove week from expanded set if present
+                const newExpanded = new Set(expandedWeeks);
+                newExpanded.delete(Number(week));
+                setExpandedWeeks(newExpanded);
+                fetchData();
+            } else {
+                Swal.fire('Error', res.error, 'error');
+            }
+        }
+    };
+
     const [expandedWeeks, setExpandedWeeks] = useState(new Set([1])); // Default expand week 1
 
     const toggleWeek = (week) => {
@@ -259,10 +287,21 @@ export default function GroupExercisesPage({ params }) {
                                         <span>สัปดาห์ที่ {week}</span>
                                         <span className="text-sm font-normal text-slate-500">({groupedExercises[week].length} ท่า)</span>
                                     </h2>
-                                    <div className={`transform transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}>
-                                        <svg className="w-6 h-6 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                        </svg>
+                                    <div className="flex items-center gap-3">
+                                        <button
+                                            onClick={(e) => handleDeleteWeek(Number(week), e)}
+                                            className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors"
+                                            title="ลบทั้ง Week"
+                                        >
+                                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                            </svg>
+                                        </button>
+                                        <div className={`transform transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}>
+                                            <svg className="w-6 h-6 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                            </svg>
+                                        </div>
                                     </div>
                                 </div>
                                 {isExpanded && (
