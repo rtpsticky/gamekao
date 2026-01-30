@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, use } from 'react';
-import { getGroupExercises, createGroupExercise, updateGroupExercise, deleteGroupExercise } from '@/app/actions/groupExercise';
+import { getGroupExercises, createGroupExercise, updateGroupExercise, deleteGroupExercise, copyWeekExercises } from '@/app/actions/groupExercise';
 import { getGroupDetails } from '@/app/actions/group';
 import Swal from 'sweetalert2';
 import Link from 'next/link';
@@ -14,6 +14,13 @@ export default function GroupExercisesPage({ params }) {
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingExercise, setEditingExercise] = useState(null);
+
+    // Copy Week State
+    const [isCopyModalOpen, setIsCopyModalOpen] = useState(false);
+    const [copyConfig, setCopyConfig] = useState({
+        sourceWeek: 1,
+        targetWeek: 2
+    });
 
     // Form State
     const [formData, setFormData] = useState({
@@ -123,6 +130,35 @@ export default function GroupExercisesPage({ params }) {
         }
     };
 
+    const handleCopySubmit = async (e) => {
+        e.preventDefault();
+
+        if (copyConfig.sourceWeek === copyConfig.targetWeek) {
+            Swal.fire('Error', 'สัปดาห์ต้นทางและปลายทางต้องไม่เหมือนกัน', 'error');
+            return;
+        }
+
+        const result = await Swal.fire({
+            title: 'ยืนยันการคัดลอก?',
+            text: `ท่าออกกำลังกายทั้งหมดจาก Week ${copyConfig.sourceWeek} จะถูกเพิ่มไปที่ Week ${copyConfig.targetWeek}`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'คัดลอก',
+            cancelButtonText: 'ยกเลิก'
+        });
+
+        if (result.isConfirmed) {
+            const res = await copyWeekExercises(id, copyConfig.sourceWeek, copyConfig.targetWeek);
+            if (res.success) {
+                Swal.fire('คัดลอกสำเร็จ', `เพิ่ม ${res.count} ท่าไปยัง Week ${copyConfig.targetWeek}`, 'success');
+                setIsCopyModalOpen(false);
+                fetchData();
+            } else {
+                Swal.fire('Error', res.error, 'error');
+            }
+        }
+    };
+
     const [expandedWeeks, setExpandedWeeks] = useState(new Set([1])); // Default expand week 1
 
     const toggleWeek = (week) => {
@@ -176,12 +212,20 @@ export default function GroupExercisesPage({ params }) {
                     </h1>
                     <p className="text-slate-500 mt-1">กำหนดท่าออกกำลังกายในแต่ละสัปดาห์</p>
                 </div>
-                <button
-                    onClick={() => handleOpenModal()}
-                    className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-xl shadow-lg shadow-indigo-500/20 transition-all hover:scale-105 active:scale-95 font-medium"
-                >
-                    <span className="text-xl">+</span> เพิ่มท่าใหม่
-                </button>
+                <div className="flex gap-2">
+                    <button
+                        onClick={() => setIsCopyModalOpen(true)}
+                        className="flex items-center gap-2 bg-white text-indigo-600 border border-indigo-200 hover:bg-indigo-50 px-5 py-3 rounded-xl shadow-sm transition-all hover:scale-105 active:scale-95 font-medium"
+                    >
+                        📋 คัดลอก Week
+                    </button>
+                    <button
+                        onClick={() => handleOpenModal()}
+                        className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-xl shadow-lg shadow-indigo-500/20 transition-all hover:scale-105 active:scale-95 font-medium"
+                    >
+                        <span className="text-xl">+</span> เพิ่มท่าใหม่
+                    </button>
+                </div>
             </div>
 
             {loading ? (
@@ -331,6 +375,60 @@ export default function GroupExercisesPage({ params }) {
                     </div>
                 </div>
             )}
+
+            {/* Copy Week Modal */}
+            {isCopyModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="px-6 py-4 bg-slate-50 border-b flex justify-between items-center">
+                            <h3 className="font-bold text-lg text-slate-800">คัดลอก Week</h3>
+                            <button onClick={() => setIsCopyModalOpen(false)} className="text-slate-400 hover:text-slate-600">✕</button>
+                        </div>
+                        <form onSubmit={handleCopySubmit} className="p-6 space-y-4">
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-1">จาก (Source Week)</label>
+                                <select
+                                    className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all"
+                                    value={copyConfig.sourceWeek}
+                                    onChange={(e) => setCopyConfig({ ...copyConfig, sourceWeek: parseInt(e.target.value) })}
+                                >
+                                    {[1, 2, 3, 4, 5, 6, 7, 8].map(num => (
+                                        <option key={num} value={num}>Week {num}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="flex justify-center text-slate-400">
+                                <svg className="w-6 h-6 animate-bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                                </svg>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-1">ไปยัง (Target Week)</label>
+                                <select
+                                    className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all"
+                                    value={copyConfig.targetWeek}
+                                    onChange={(e) => setCopyConfig({ ...copyConfig, targetWeek: parseInt(e.target.value) })}
+                                >
+                                    {[1, 2, 3, 4, 5, 6, 7, 8].map(num => (
+                                        <option key={num} value={num}>Week {num}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <p className="text-xs text-slate-500 bg-yellow-50 p-2 rounded border border-yellow-200">
+                                * ท่าออกกำลังกายจะถูกเพิ่มเข้าไปใน Week ปลายทาง (ไม่ทับของเดิม)
+                            </p>
+
+                            <button
+                                type="submit"
+                                className="w-full mt-4 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition-all shadow-lg shadow-indigo-500/30 active:scale-95"
+                            >
+                                คัดลอกทันที
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            )}
+
         </div>
     );
 }
