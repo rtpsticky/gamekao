@@ -133,7 +133,7 @@ export default function LiffExerciseVdoPage() {
                     {currentExercise.videoUrl ? (
                         <video
                             className="absolute top-0 left-0 w-full h-full object-cover"
-                            src={currentExercise.videoUrl}
+                            src={`https://drive.google.com/uc?export=download&id=${currentExercise.videoUrl}`}
                             title={currentExercise.name}
                             muted
                             controls
