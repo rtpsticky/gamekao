@@ -50,6 +50,7 @@ export async function registerUser(formData) {
                     lastName,
                     age,
                     gender,
+                    currentPosition: 1,
                 },
             });
         }
