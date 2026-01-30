@@ -394,13 +394,13 @@ export default function GroupExercisesPage({ params }) {
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-bold text-slate-700 mb-1">ลิ้งก์วิดีโอ (Youtube)</label>
+                                <label className="block text-sm font-bold text-slate-700 mb-1">รหัสวิดีโอ (Google Drive ID)</label>
                                 <input
-                                    type="url"
+                                    type="text"
                                     className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all"
                                     value={formData.videoUrl}
                                     onChange={(e) => setFormData({ ...formData, videoUrl: e.target.value })}
-                                    placeholder="https://youtube.com/..."
+                                    placeholder="เช่น 1aBcDeFgHiJkLmNoPqRsTuVwXyZ"
                                 />
                             </div>
 
