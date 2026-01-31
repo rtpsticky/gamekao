@@ -185,8 +185,8 @@ function StatsContent() {
                             <div className="text-2xl font-black">{myStats?.rank || '-'}</div>
                         </div>
                         <div className="bg-white/20 backdrop-blur-md rounded-2xl p-3 flex-1 text-center border border-white/10">
-                            <div className="text-xs opacity-80 mb-1">คะแนนสะสม</div>
-                            <div className="text-2xl font-black">{myStats?.points?.toLocaleString() || 0}</div>
+                            <div className="text-xs opacity-80 mb-1">จำนวนก้าว</div>
+                            <div className="text-2xl font-black">{myStats?.currentPosition?.toLocaleString() || 0}</div>
                         </div>
                     </div>
                 </div>
@@ -248,7 +248,7 @@ function StatsContent() {
                                     <div className="font-bold text-slate-700 truncate">{user.displayName}</div>
                                 </div>
                                 <div className="font-mono font-bold text-emerald-600 text-sm">
-                                    {user.points.toLocaleString()} pts
+                                    {user.currentPosition.toLocaleString()} ก้าว
                                 </div>
                             </div>
                         ))}

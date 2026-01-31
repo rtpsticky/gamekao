@@ -51,7 +51,7 @@ export async function getLeaderboardData(lineUserId) {
     try {
         const currentUser = await prisma.user.findUnique({
             where: { lineUserId },
-            select: { id: true, points: true, displayName: true, profileImageUrl: true, isActive: true }
+            select: { id: true, currentPosition: true, displayName: true, profileImageUrl: true, isActive: true }
         });
 
         if (!currentUser) return { error: "User not found" };
@@ -77,9 +77,9 @@ export async function getLeaderboardData(lineUserId) {
                 id: true,
                 displayName: true,
                 profileImageUrl: true,
-                points: true,
+                currentPosition: true,
             },
-            orderBy: { points: 'desc' },
+            orderBy: { currentPosition: 'desc' },
             take: 100 // Limit leaderboard size for performance
         });
 
@@ -97,7 +97,7 @@ export async function getLeaderboardData(lineUserId) {
             const higherPointsCount = await prisma.user.count({
                 where: {
                     ...whereCondition,
-                    points: { gt: currentUser.points }
+                    currentPosition: { gt: currentUser.currentPosition }
                 }
             });
 
@@ -162,8 +162,8 @@ export async function getRewardsData(lineUserId) {
         // Fetch Rewards
         const rewards = await prisma.reward.findMany();
 
-        // Custom Sort: Gold -> Silver -> Bronze -> Others (Based on minRank)
-        rewards.sort((a, b) => a.minRank - b.minRank);
+        // Sort by order 
+        rewards.sort((a, b) => a.order - b.order);
 
         // Map rewards logic (Cumulative Eligibility)
         const hasClaimedAny = user.rewards.some(r => r.isRedeemed || true);
