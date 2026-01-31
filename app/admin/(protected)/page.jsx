@@ -7,7 +7,7 @@ async function getStats() {
         prisma.exerciseLog.count(),
         prisma.user.aggregate({
             _sum: {
-                points: true
+                currentPosition: true
             }
         })
     ]);
@@ -16,7 +16,7 @@ async function getStats() {
         userCount,
         groupCount,
         exerciseLogCount,
-        totalPoints: totalPoints._sum.points || 0
+        totalPoints: totalPoints._sum.currentPosition || 0
     };
 }
 
