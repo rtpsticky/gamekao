@@ -161,13 +161,13 @@ export default function RewardsPage() {
 
                                 <div className="mb-2">
                                     <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded border border-gray-200">
-                                        อันดับ: {reward.minRank || 0} - {reward.maxRank || 'ไม่จำกัด'}
+                                        แต้มที่ต้องมี: {reward.minRank || 0} - {reward.maxRank || 'ไม่จำกัด'}
                                     </span>
                                 </div>
 
                                 <div className="flex items-center justify-between mb-4">
                                     <span className="text-sm bg-green-100 text-green-800 px-3 py-1 rounded-full font-medium">
-                                        {reward.pointCost.toLocaleString()} แต้ม
+                                        จาย: {reward.pointCost.toLocaleString()} แต้ม
                                     </span>
                                     <span className={`text-sm px-3 py-1 rounded-full font-medium ${reward.stock > 0 ? 'bg-purple-100 text-purple-800' : 'bg-red-100 text-red-800'}`}>
                                         คงเหลือ: {reward.stock}
@@ -247,7 +247,7 @@ export default function RewardsPage() {
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">อันดับต่ำสุด (Min Rank)</label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">แต้มต่ำสุด (Min Points)</label>
                                     <input
                                         type="number"
                                         name="minRank"
@@ -256,10 +256,10 @@ export default function RewardsPage() {
                                         className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
                                         placeholder="0 (ไม่จำกัด)"
                                     />
-                                    <p className="text-xs text-gray-500 mt-1">0 หรือว่าง = ไม่จำกัด</p>
+                                    <p className="text-xs text-gray-500 mt-1">แต้มขั้นต่ำที่มีสิทธิ์แลก</p>
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">อันดับสูงสุด (Max Rank)</label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">แต้มสูงสุด (Max Points)</label>
                                     <input
                                         type="number"
                                         name="maxRank"
@@ -268,7 +268,7 @@ export default function RewardsPage() {
                                         className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
                                         placeholder="ว่าง = ไม่จำกัด"
                                     />
-                                    <p className="text-xs text-gray-500 mt-1">ว่าง = ไม่จำกัด</p>
+                                    <p className="text-xs text-gray-500 mt-1">แต้มสูงสุดที่มีสิทธิ์แลก</p>
                                 </div>
                             </div>
 
