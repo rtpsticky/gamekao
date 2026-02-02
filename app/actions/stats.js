@@ -14,21 +14,27 @@ async function ensureRewardsExist() {
             data: [
                 {
                     title: "รางวัลระดับทอง",
-                    description: "สำหรับผู้ที่มีคะแนนสูงสุด 10 อันดับแรก",
-                    pointCost: 0, // Rank based, free to claim if eligible
-                    stock: 10
+                    description: "สำหรับผู้ที่มีคะแนน 37-48 แต้ม",
+                    pointCost: 0,
+                    stock: 10,
+                    minRank: 37, // repurposed as minPoints
+                    maxRank: 48  // repurposed as maxPoints
                 },
                 {
                     title: "รางวัลระดับเงิน",
-                    description: "สำหรับผู้ที่มีคะแนนลำดับที่ 11-50",
+                    description: "สำหรับผู้ที่มีคะแนน 25-36 แต้ม",
                     pointCost: 0,
-                    stock: 50
+                    stock: 50,
+                    minRank: 25,
+                    maxRank: 36
                 },
                 {
                     title: "รางวัลระดับทองแดง",
-                    description: "สำหรับผู้ที่มีคะแนนลำดับที่ 51 ขึ้นไป",
+                    description: "สำหรับผู้ที่มีคะแนน 0-24 แต้ม",
                     pointCost: 0,
-                    stock: 100
+                    stock: 100,
+                    minRank: 0,
+                    maxRank: 24
                 }
             ]
         });
@@ -139,25 +145,11 @@ export async function getRewardsData(lineUserId) {
         if (!user) return { error: "User not found" };
         if (user.isActive === false) return { error: "ACCOUNT_INACTIVE" };
 
-        // Determine User Rank for unlocking logic (Scoped to Group)
+        // Check group (needed for context)
         const activeGroup = await getUserActiveGroup(user.id);
-
         if (!activeGroup) {
             return { error: "NO_GROUP" };
         }
-
-        const whereCondition = {
-            isActive: true,
-            groups: { some: { groupId: activeGroup.id } }
-        };
-
-        // Count users with strictly more points to get rank (1-based)
-        const rank = await prisma.user.count({
-            where: {
-                ...whereCondition,
-                points: { gt: user.points }
-            }
-        }) + 1;
 
         // Fetch Rewards
         const rewards = await prisma.reward.findMany();
@@ -165,26 +157,38 @@ export async function getRewardsData(lineUserId) {
         // Sort by order 
         rewards.sort((a, b) => a.order - b.order);
 
-        // Map rewards logic (Cumulative Eligibility)
+        // Map rewards logic (Point Based Eligibility)
         const hasClaimedAny = user.rewards.some(r => r.isRedeemed || true);
         const claimedRewardId = user.rewards.length > 0 ? user.rewards[0].rewardId : null;
+
+        // Use currentPosition as "Points"
+        const currentPoints = user.currentPosition || 0;
 
         const mappedRewards = rewards.map((r) => {
             let isUnlockable = true;
             let conditionText = "";
 
-            if (r.minRank > 0 && r.maxRank) {
-                isUnlockable = rank >= r.minRank && rank <= r.maxRank;
-                conditionText = `สำหรับลำดับที่ ${r.minRank}-${r.maxRank}`;
-            } else if (r.minRank > 0) {
-                isUnlockable = rank >= r.minRank;
-                conditionText = `สำหรับลำดับที่ ${r.minRank} ขึ้นไป`;
-            } else if (r.maxRank) {
-                isUnlockable = rank <= r.maxRank;
-                conditionText = `สำหรับลำดับที่ 1-${r.maxRank}`;
+            // Treat minRank/maxRank as minPoints/maxPoints
+            const minPoints = r.minRank;
+            const maxPoints = r.maxRank;
+
+            if (minPoints > 0 && maxPoints !== null) {
+                isUnlockable = currentPoints >= minPoints && currentPoints <= maxPoints;
+                conditionText = `สำหรับผู้ที่มีคะแนน ${minPoints}-${maxPoints} แต้ม`;
+            } else if (minPoints > 0) {
+                isUnlockable = currentPoints >= minPoints;
+                conditionText = `สำหรับผู้ที่มีคะแนน ${minPoints} แต้มขึ้นไป`;
+            } else if (maxPoints !== null) {
+                isUnlockable = currentPoints <= maxPoints;
+                conditionText = `สำหรับผู้ที่มีคะแนน 0-${maxPoints} แต้ม`;
             } else {
-                isUnlockable = true;
-                conditionText = "สำหรับผู้เล่นทุกคน";
+                if (minPoints === 0 && maxPoints !== null) {
+                    isUnlockable = currentPoints >= 0 && currentPoints <= maxPoints;
+                    conditionText = `สำหรับผู้ที่มีคะแนน 0-${maxPoints} แต้ม`;
+                } else {
+                    isUnlockable = true;
+                    conditionText = "สำหรับผู้เล่นทุกคน";
+                }
             }
 
             return {
@@ -198,7 +202,7 @@ export async function getRewardsData(lineUserId) {
 
         return {
             rewards: mappedRewards,
-            userRank: rank,
+            userRank: 0, // Not used anymore for rewards logic
             hasClaimedAny
         };
 
@@ -227,31 +231,24 @@ export async function claimReward(lineUserId, rewardId) {
         if (!reward) return { error: "Reward not found" };
         if (reward.stock <= 0) return { error: "Out of stock" };
 
-        // Verify Rank Requirement again (Scoped)
-        const groupId = await getUserActiveGroup(user.id).then(g => g?.id);
-        const whereCondition = groupId
-            ? { groups: { some: { groupId } }, isActive: true }
-            : { isActive: true };
-
-        const rank = await prisma.user.count({
-            where: {
-                ...whereCondition,
-                points: { gt: user.points }
-            }
-        }) + 1;
-
+        // Verify Point/Position Requirement
+        const currentPoints = user.currentPosition || 0;
         let isUnlockable = true;
+        const minPoints = reward.minRank;
+        const maxPoints = reward.maxRank;
 
-        if (reward.minRank > 0 && reward.maxRank) {
-            isUnlockable = rank >= reward.minRank && rank <= reward.maxRank;
-        } else if (reward.minRank > 0) {
-            isUnlockable = rank >= reward.minRank;
-        } else if (reward.maxRank) {
-            isUnlockable = rank <= reward.maxRank;
+        if (minPoints > 0 && maxPoints !== null) {
+            isUnlockable = currentPoints >= minPoints && currentPoints <= maxPoints;
+        } else if (minPoints > 0) {
+            isUnlockable = currentPoints >= minPoints;
+        } else if (maxPoints !== null) {
+            isUnlockable = currentPoints <= maxPoints;
+        } else if (minPoints === 0 && maxPoints !== null) {
+            isUnlockable = currentPoints <= maxPoints;
         }
 
         if (!isUnlockable) {
-            return { error: "Rank requirement not met." };
+            return { error: "Point requirement not met." };
         }
 
         // Transaction to claim
