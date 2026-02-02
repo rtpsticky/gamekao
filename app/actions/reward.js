@@ -31,7 +31,7 @@ export async function createReward(data) {
             data: {
                 title: data.title,
                 description: data.description,
-                pointCost: parseInt(data.pointCost),
+                pointCost: 0, // No longer using point cost
                 stock: parseInt(data.stock),
                 order: parseInt(data.order) || 0,
                 minRank: parseInt(data.minRank) || 0,
@@ -53,7 +53,7 @@ export async function updateReward(id, data) {
             data: {
                 title: data.title,
                 description: data.description,
-                pointCost: parseInt(data.pointCost),
+                pointCost: 0, // No longer using point cost
                 stock: parseInt(data.stock),
                 order: parseInt(data.order) || 0,
                 minRank: parseInt(data.minRank) || 0,

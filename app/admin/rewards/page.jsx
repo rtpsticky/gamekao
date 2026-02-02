@@ -13,7 +13,6 @@ export default function RewardsPage() {
     const [formData, setFormData] = useState({
         title: '',
         description: '',
-        pointCost: '',
         stock: '',
         order: ''
     });
@@ -37,7 +36,6 @@ export default function RewardsPage() {
             setFormData({
                 title: reward.title,
                 description: reward.description || '',
-                pointCost: reward.pointCost,
                 stock: reward.stock,
                 order: reward.order,
                 minRank: reward.minRank || 0,
@@ -48,7 +46,6 @@ export default function RewardsPage() {
             setFormData({
                 title: '',
                 description: '',
-                pointCost: '',
                 stock: '',
                 order: '',
                 minRank: '',
@@ -72,14 +69,14 @@ export default function RewardsPage() {
         e.preventDefault();
 
         // Validation
-        if (!formData.title || !formData.pointCost || !formData.stock || !formData.order) {
+        if (!formData.title || !formData.stock || !formData.order) {
             Swal.fire('Error', 'กรุณากรอกข้อมูลให้ครบถ้วน', 'error');
             return;
         }
 
         const dataToSubmit = {
             ...formData,
-            pointCost: parseInt(formData.pointCost),
+            pointCost: 0,
             stock: parseInt(formData.stock),
             order: parseInt(formData.order),
             minRank: parseInt(formData.minRank) || 0,
@@ -166,9 +163,6 @@ export default function RewardsPage() {
                                 </div>
 
                                 <div className="flex items-center justify-between mb-4">
-                                    <span className="text-sm bg-green-100 text-green-800 px-3 py-1 rounded-full font-medium">
-                                        จาย: {reward.pointCost.toLocaleString()} แต้ม
-                                    </span>
                                     <span className={`text-sm px-3 py-1 rounded-full font-medium ${reward.stock > 0 ? 'bg-purple-100 text-purple-800' : 'bg-red-100 text-red-800'}`}>
                                         คงเหลือ: {reward.stock}
                                     </span>
@@ -272,31 +266,17 @@ export default function RewardsPage() {
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">ใช้แต้มแลก</label>
-                                    <input
-                                        type="number"
-                                        name="pointCost"
-                                        value={formData.pointCost}
-                                        onChange={handleChange}
-                                        className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-                                        placeholder="0"
-                                        required
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">จำนวนคงเหลือ</label>
-                                    <input
-                                        type="number"
-                                        name="stock"
-                                        value={formData.stock}
-                                        onChange={handleChange}
-                                        className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-                                        placeholder="0"
-                                        required
-                                    />
-                                </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">จำนวนคงเหลือ</label>
+                                <input
+                                    type="number"
+                                    name="stock"
+                                    value={formData.stock}
+                                    onChange={handleChange}
+                                    className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                                    placeholder="0"
+                                    required
+                                />
                             </div>
 
                             <div className="flex gap-3 mt-8">
