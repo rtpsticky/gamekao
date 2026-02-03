@@ -14,8 +14,9 @@ export async function registerUser(formData) {
     const lastName = formData.get("lastName");
     const age = parseInt(formData.get("age"), 10);
     const gender = formData.get("gender");
+    const phoneNumber = formData.get("phoneNumber");
 
-    if (!lineUserId || !firstName || !lastName || !age || !gender) {
+    if (!lineUserId || !firstName || !lastName || !age || !gender || !phoneNumber) {
         return { error: "กรุณากรอกข้อมูลให้ครบถ้วน" };
     }
 
@@ -36,6 +37,7 @@ export async function registerUser(formData) {
                     lastName,
                     age,
                     gender,
+                    phoneNumber,
                     displayName: displayName || existingUser.displayName,
                     profileImageUrl: profileImageUrl || existingUser.profileImageUrl,
                 }
@@ -50,6 +52,7 @@ export async function registerUser(formData) {
                     lastName,
                     age,
                     gender,
+                    phoneNumber,
                     currentPosition: 1,
                 },
             });

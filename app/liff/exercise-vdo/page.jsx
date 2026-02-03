@@ -127,7 +127,7 @@ export default function LiffExerciseVdoPage() {
                     <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full">{groupName}</span>
                     <span className="text-xs font-bold opacity-80">{currentExerciseIndex + 1} / {exercises.length}</span>
                 </div>
-                <h1 className="text-2xl font-bold">Week {week} 🔥</h1>
+                <h1 className="text-2xl font-bold">สัปดาห์ที่ {week} 🔥</h1>
                 <p className="text-indigo-100 text-sm opacity-90">ฝึกท่าออกกำลังกายประจำสัปดาห์</p>
             </div>
 

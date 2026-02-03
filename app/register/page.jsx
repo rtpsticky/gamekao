@@ -210,6 +210,17 @@ export default function RegisterPage() {
                         </select>
                     </div>
 
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">เบอร์โทรศัพท์</label>
+                        <input
+                            type="tel"
+                            name="phoneNumber"
+                            required
+                            placeholder="กรอกเบอร์โทรศัพท์"
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+                        />
+                    </div>
+
                     <button
                         type="submit"
                         className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl shadow-lg transform active:scale-95 transition-all duration-200 mt-4"

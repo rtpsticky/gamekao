@@ -19,6 +19,7 @@ model User {
   lastName        String // นามสกุล
   age             Int
   gender          String
+  phoneNumber     String? // เบอร์โทรศัพท์
   profileImageUrl String? // รูปโปรไฟล์ที่อัปโหลดผ่าน LIFF
 
   // สถานะในเกม
