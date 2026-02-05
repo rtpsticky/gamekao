@@ -77,6 +77,41 @@ export async function deleteReward(id) {
         return { success: true };
     } catch (error) {
         console.error("Error deleting reward:", error);
+        // ... existing code ...
         return { error: "Failed to delete reward" };
+    }
+}
+
+export async function getRewardHistory() {
+    try {
+        const history = await prisma.userReward.findMany({
+            include: {
+                user: true,
+                reward: true
+            },
+            orderBy: {
+                createdAt: 'desc'
+            }
+        });
+        return { history };
+    } catch (error) {
+        console.error("Error fetching reward history:", error);
+        return { error: "Failed to fetch reward history" };
+    }
+}
+
+export async function toggleRewardStatus(id, currentStatus) {
+    try {
+        await prisma.userReward.update({
+            where: { id },
+            data: {
+                isRedeemed: !currentStatus
+            }
+        });
+        revalidatePath('/admin/rewards');
+        return { success: true };
+    } catch (error) {
+        console.error("Error toggling reward status:", error);
+        return { error: "Failed to toggle reward status" };
     }
 }

@@ -1,11 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getRewards, createReward, updateReward, deleteReward } from '@/app/actions/reward';
+import { getRewards, createReward, updateReward, deleteReward, getRewardHistory, toggleRewardStatus } from '@/app/actions/reward';
 import Swal from 'sweetalert2';
 
 export default function RewardsPage() {
     const [rewards, setRewards] = useState([]);
+    const [history, setHistory] = useState([]);
+    const [activeTab, setActiveTab] = useState('rewards');
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingReward, setEditingReward] = useState(null);
@@ -17,17 +19,42 @@ export default function RewardsPage() {
         order: ''
     });
 
-    useEffect(() => {
-        fetchRewards();
-    }, []);
-
-    const fetchRewards = async () => {
+    const fetchData = async () => {
         setLoading(true);
-        const result = await getRewards();
-        if (result.rewards) {
-            setRewards(result.rewards);
+        const [rewardsResult, historyResult] = await Promise.all([
+            getRewards(),
+            getRewardHistory()
+        ]);
+
+        if (rewardsResult.rewards) {
+            setRewards(rewardsResult.rewards);
+        }
+        if (historyResult.history) {
+            setHistory(historyResult.history);
         }
         setLoading(false);
+    };
+
+    useEffect(() => {
+        fetchData();
+    }, []);
+
+    const handleToggleStatus = async (id, currentStatus) => {
+        const result = await toggleRewardStatus(id, currentStatus);
+        if (result.success) {
+            // Update local state directly for immediate feedback
+            setHistory(prev => prev.map(item =>
+                item.id === id ? { ...item, isRedeemed: !currentStatus } : item
+            ));
+            Swal.fire({
+                icon: 'success',
+                title: 'อัปเดตสถานะสำเร็จ',
+                showConfirmButton: false,
+                timer: 1500
+            });
+        } else {
+            Swal.fire('Error', 'ไม่สามารถอัปเดตสถานะได้', 'error');
+        }
     };
 
     const handleOpenModal = (reward = null) => {
@@ -93,7 +120,7 @@ export default function RewardsPage() {
         if (result.success) {
             Swal.fire('Success', editingReward ? 'แก้ไขรางวัลสำเร็จ' : 'เพิ่มรางวัลสำเร็จ', 'success');
             handleCloseModal();
-            fetchRewards();
+            fetchData();
         } else {
             Swal.fire('Error', 'เกิดข้อผิดพลาด', 'error');
         }
@@ -115,7 +142,7 @@ export default function RewardsPage() {
             const deleteResult = await deleteReward(id);
             if (deleteResult.success) {
                 Swal.fire('Deleted!', 'ลบรางวัลเรียบร้อยแล้ว', 'success');
-                fetchRewards();
+                fetchData();
             } else {
                 Swal.fire('Error', 'เกิดข้อผิดพลาดในการลบ', 'error');
             }
@@ -139,11 +166,33 @@ export default function RewardsPage() {
                 </button>
             </div>
 
+            {/* Tabs */}
+            <div className="flex space-x-1 bg-gray-100 p-1 rounded-xl mb-6 w-fit">
+                <button
+                    onClick={() => setActiveTab('rewards')}
+                    className={`px-6 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 ${activeTab === 'rewards'
+                        ? 'bg-white text-blue-600 shadow-sm'
+                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200/50'
+                        }`}
+                >
+                    รายการของรางวัล
+                </button>
+                <button
+                    onClick={() => setActiveTab('history')}
+                    className={`px-6 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 ${activeTab === 'history'
+                        ? 'bg-white text-blue-600 shadow-sm'
+                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200/50'
+                        }`}
+                >
+                    ประวัติการแลก
+                </button>
+            </div>
+
             {loading ? (
                 <div className="flex justify-center items-center h-64">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
                 </div>
-            ) : (
+            ) : activeTab === 'rewards' ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {rewards.map((reward) => (
                         <div key={reward.id} className="bg-white rounded-xl shadow-md hover:shadow-xl transition-shadow duration-300 overflow-hidden border border-gray-100 relative group">
@@ -190,6 +239,75 @@ export default function RewardsPage() {
                             ยังไม่มีของรางวัล
                         </div>
                     )}
+                </div>
+            ) : (
+                <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden">
+                    <div className="overflow-x-auto">
+                        <table className="w-full">
+                            <thead className="bg-gray-50 border-b border-gray-100">
+                                <tr>
+                                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">วันเวลา</th>
+                                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">ผู้แลก</th>
+                                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">ของรางวัล</th>
+                                    <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">สถานะ</th>
+                                    <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">จัดการ</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                                {history.map((record) => (
+                                    <tr key={record.id} className="hover:bg-gray-50/50 transition-colors">
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                            {new Date(record.createdAt).toLocaleString('th-TH')}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <div className="flex items-center">
+                                                <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold mr-3">
+                                                    {record.user?.firstName?.charAt(0) || '?'}
+                                                </div>
+                                                <div>
+                                                    <div className="text-sm font-medium text-gray-900">
+                                                        {record.user?.firstName} {record.user?.lastName}
+                                                    </div>
+                                                    <div className="text-xs text-gray-500">
+                                                        {record.user?.lineUserId?.substring(0, 8)}...
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <span className="text-sm font-medium text-gray-900">{record.reward?.title}</span>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                                            <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${record.isRedeemed
+                                                    ? 'bg-green-100 text-green-800'
+                                                    : 'bg-yellow-100 text-yellow-800'
+                                                }`}>
+                                                {record.isRedeemed ? 'รับของแล้ว' : 'รอรับของ'}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                                            <button
+                                                onClick={() => handleToggleStatus(record.id, record.isRedeemed)}
+                                                className={`text-xs px-3 py-1.5 rounded-lg border transition-all ${record.isRedeemed
+                                                        ? 'border-gray-300 text-gray-600 hover:bg-gray-50'
+                                                        : 'border-green-600 text-green-600 hover:bg-green-50'
+                                                    }`}
+                                            >
+                                                {record.isRedeemed ? 'ยกเลิกสถานะรับแล้ว' : 'ยืนยันการรับของ'}
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                                {history.length === 0 && (
+                                    <tr>
+                                        <td colSpan="5" className="px-6 py-12 text-center text-gray-500 bg-gray-50/30">
+                                            ยังไม่มีประวัติการแลกรางวัล
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             )}
 
