@@ -79,19 +79,23 @@ export async function deleteGroupExercise(id) {
 }
 
 export async function copyWeekExercises(groupId, sourceWeek, targetWeek) {
-    if (!groupId || !sourceWeek || !targetWeek) {
+    return copyExercisesFromGroup(groupId, groupId, sourceWeek, targetWeek);
+}
+
+export async function copyExercisesFromGroup(targetGroupId, sourceGroupId, sourceWeek, targetWeek) {
+    if (!targetGroupId || !sourceGroupId || !sourceWeek || !targetWeek) {
         return { error: "Missing required fields" };
     }
 
-    if (sourceWeek === targetWeek) {
-        return { error: "Source and target weeks cannot be the same" };
+    if (targetGroupId === sourceGroupId && sourceWeek === targetWeek) {
+        return { error: "Source and target cannot be the same" };
     }
 
     try {
         // 1. Get exercises from source week
         const sourceExercises = await prisma.groupExercise.findMany({
             where: {
-                groupId,
+                groupId: sourceGroupId,
                 weekNumber: parseInt(sourceWeek)
             }
         });
@@ -101,9 +105,8 @@ export async function copyWeekExercises(groupId, sourceWeek, targetWeek) {
         }
 
         // 2. Prepare data for new exercises
-        // We create them one by one or createMany if supported (Prisma createMany is supported in most SQL DBs)
         const newExercisesData = sourceExercises.map(ex => ({
-            groupId,
+            groupId: targetGroupId,
             weekNumber: parseInt(targetWeek),
             name: ex.name,
             description: ex.description,
@@ -114,7 +117,7 @@ export async function copyWeekExercises(groupId, sourceWeek, targetWeek) {
             data: newExercisesData
         });
 
-        revalidatePath(`/admin/groups/${groupId}`);
+        revalidatePath(`/admin/groups/${targetGroupId}`);
         return { success: true, count: newExercisesData.length };
     } catch (error) {
         console.error("Error copying exercises:", error);

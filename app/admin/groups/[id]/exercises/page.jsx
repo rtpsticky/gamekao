@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect, use } from 'react';
-import { getGroupExercises, createGroupExercise, updateGroupExercise, deleteGroupExercise, copyWeekExercises, deleteWeekExercises } from '@/app/actions/groupExercise';
-import { getGroupDetails } from '@/app/actions/group';
+import { getGroupExercises, createGroupExercise, updateGroupExercise, deleteGroupExercise, copyExercisesFromGroup, deleteWeekExercises } from '@/app/actions/groupExercise';
+import { getGroupDetails, getGroups } from '@/app/actions/group';
 import Swal from 'sweetalert2';
 import Link from 'next/link';
 
@@ -17,7 +17,9 @@ export default function GroupExercisesPage({ params }) {
 
     // Copy Week State
     const [isCopyModalOpen, setIsCopyModalOpen] = useState(false);
+    const [groups, setGroups] = useState([]);
     const [copyConfig, setCopyConfig] = useState({
+        sourceGroupId: '',
         sourceWeek: 1,
         targetWeek: 2
     });
@@ -40,6 +42,8 @@ export default function GroupExercisesPage({ params }) {
         const groupRes = await getGroupDetails(id);
         if (groupRes.group) {
             setGroup(groupRes.group);
+            // Default source group to current group
+            setCopyConfig(prev => ({ ...prev, sourceGroupId: id }));
         }
 
         // Fetch Exercises
@@ -49,6 +53,13 @@ export default function GroupExercisesPage({ params }) {
         } else {
             console.error(res.error);
         }
+
+        // Fetch all groups for copy source list
+        const groupsRes = await getGroups();
+        if (groupsRes.groups) {
+            setGroups(groupsRes.groups);
+        }
+
         setLoading(false);
     };
 
@@ -133,14 +144,17 @@ export default function GroupExercisesPage({ params }) {
     const handleCopySubmit = async (e) => {
         e.preventDefault();
 
-        if (copyConfig.sourceWeek === copyConfig.targetWeek) {
-            Swal.fire('Error', 'สัปดาห์ต้นทางและปลายทางต้องไม่เหมือนกัน', 'error');
+        // If same group, checks if sourceWeek == targetWeek
+        if (copyConfig.sourceGroupId === id && copyConfig.sourceWeek === copyConfig.targetWeek) {
+            Swal.fire('Error', 'สัปดาห์ต้นทางและปลายทางต้องไม่เหมือนกัน (กรณีกลุ่มเดียวกัน)', 'error');
             return;
         }
 
+        const sourceGroupName = groups.find(g => g.id === copyConfig.sourceGroupId)?.name || 'กลุ่มต้นทาง';
+
         const result = await Swal.fire({
             title: 'ยืนยันการคัดลอก?',
-            text: `ท่าออกกำลังกายทั้งหมดจาก Week ${copyConfig.sourceWeek} จะถูกเพิ่มไปที่ Week ${copyConfig.targetWeek}`,
+            text: `ท่าออกกำลังกายจาก "${sourceGroupName}" (Week ${copyConfig.sourceWeek}) จะถูกเพิ่มไปที่ Week ${copyConfig.targetWeek}`,
             icon: 'question',
             showCancelButton: true,
             confirmButtonText: 'คัดลอก',
@@ -148,7 +162,7 @@ export default function GroupExercisesPage({ params }) {
         });
 
         if (result.isConfirmed) {
-            const res = await copyWeekExercises(id, copyConfig.sourceWeek, copyConfig.targetWeek);
+            const res = await copyExercisesFromGroup(id, copyConfig.sourceGroupId, copyConfig.sourceWeek, copyConfig.targetWeek);
             if (res.success) {
                 Swal.fire('คัดลอกสำเร็จ', `เพิ่ม ${res.count} ท่าไปยัง Week ${copyConfig.targetWeek}`, 'success');
                 setIsCopyModalOpen(false);
@@ -425,7 +439,20 @@ export default function GroupExercisesPage({ params }) {
                         </div>
                         <form onSubmit={handleCopySubmit} className="p-6 space-y-4">
                             <div>
-                                <label className="block text-sm font-bold text-slate-700 mb-1">จาก (Source Week)</label>
+                                <label className="block text-sm font-bold text-slate-700 mb-1">จากกลุ่ม (Source Group)</label>
+                                <select
+                                    className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all"
+                                    value={copyConfig.sourceGroupId}
+                                    onChange={(e) => setCopyConfig({ ...copyConfig, sourceGroupId: e.target.value })}
+                                >
+                                    {groups.map(g => (
+                                        <option key={g.id} value={g.id}>{g.name} {g.id === id ? '(ปัจจุบัน)' : ''}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-1">จากสัปดาห์ (Source Week)</label>
                                 <select
                                     className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all"
                                     value={copyConfig.sourceWeek}
