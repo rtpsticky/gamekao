@@ -9,6 +9,8 @@ export async function getGroupExercises(groupId) {
             where: { groupId },
             orderBy: [
                 { weekNumber: 'asc' },
+                { weekNumber: 'asc' },
+                { sequence: 'asc' }, // Sort by sequence first
                 { createdAt: 'asc' }
             ]
         });
@@ -20,7 +22,7 @@ export async function getGroupExercises(groupId) {
 }
 
 export async function createGroupExercise(data) {
-    const { groupId, weekNumber, name, description, videoUrl } = data;
+    const { groupId, weekNumber, name, description, videoUrl, sequence } = data;
 
     if (!groupId || !weekNumber || !name) {
         return { error: "Missing required fields" };
@@ -33,7 +35,9 @@ export async function createGroupExercise(data) {
                 weekNumber: parseInt(weekNumber),
                 name,
                 description,
-                videoUrl
+                description,
+                videoUrl,
+                sequence: sequence ? parseInt(sequence) : 0
             }
         });
         revalidatePath(`/admin/groups/${groupId}`);
@@ -45,7 +49,7 @@ export async function createGroupExercise(data) {
 }
 
 export async function updateGroupExercise(id, data) {
-    const { name, description, videoUrl, weekNumber } = data;
+    const { name, description, videoUrl, weekNumber, sequence } = data;
 
     try {
         const exercise = await prisma.groupExercise.update({
@@ -54,7 +58,9 @@ export async function updateGroupExercise(id, data) {
                 name,
                 description,
                 videoUrl,
-                weekNumber: weekNumber ? parseInt(weekNumber) : undefined
+                videoUrl,
+                weekNumber: weekNumber ? parseInt(weekNumber) : undefined,
+                sequence: sequence !== undefined ? parseInt(sequence) : undefined
             }
         });
         revalidatePath(`/admin/groups/${exercise.groupId}`);
@@ -110,7 +116,10 @@ export async function copyExercisesFromGroup(targetGroupId, sourceGroupId, sourc
             weekNumber: parseInt(targetWeek),
             name: ex.name,
             description: ex.description,
-            videoUrl: ex.videoUrl
+            name: ex.name,
+            description: ex.description,
+            videoUrl: ex.videoUrl,
+            sequence: ex.sequence // Preserve sequence from source
         }));
 
         await prisma.groupExercise.createMany({
@@ -216,9 +225,10 @@ export async function getUserCurrentWeekExercises(lineUserId) {
                 groupId: group.id,
                 weekNumber: currentWeek
             },
-            orderBy: {
-                createdAt: 'asc'
-            }
+            orderBy: [
+                { sequence: 'asc' },
+                { createdAt: 'asc' }
+            ]
         });
 
         return {

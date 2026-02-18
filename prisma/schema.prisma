@@ -79,6 +79,7 @@ model GroupExercise {
   videoUrl    String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  sequence    Int      @default(0) // ลำดับท่าในสัปดาห์นั้นๆ
 }
 
 // ==========================================

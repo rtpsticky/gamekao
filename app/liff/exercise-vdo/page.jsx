@@ -154,7 +154,10 @@ export default function LiffExerciseVdoPage() {
 
                 {/* Info */}
                 <div className="space-y-3">
-                    <h2 className="text-2xl font-extrabold text-slate-800">{currentExercise.name}</h2>
+                    <h2 className="text-2xl font-extrabold text-slate-800">
+                        <span className="text-indigo-600 mr-2">#{currentExercise.sequence}</span>
+                        {currentExercise.name}
+                    </h2>
                     <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 text-slate-600 leading-relaxed">
                         <h3 className="text-xs font-bold text-slate-400 uppercase mb-1 tracking-wider">คำอธิบาย</h3>
                         {currentExercise.description || 'ไม่มีคำอธิบายเพิ่มเติม'}
