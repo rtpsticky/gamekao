@@ -49,20 +49,36 @@ export async function submitExercise(formData) {
             where: {
                 userId: user.id,
                 group: { isActive: true }
-            }
+            },
+            include: { group: true }
         });
 
         if (!activeGroupMember) {
             return { error: "NO_GROUP" };
         }
 
-        // --- Logic: Date & Week Calculation ---
+        // --- Logic: Date & Week Calculation (Relative to Group Start Date) ---
         const now = new Date();
-        const currentWeekNumber = getISOWeek(now);
+        let currentWeekNumber = 1;
+        
+        if (activeGroupMember.group.startDate) {
+            const startDate = new Date(activeGroupMember.group.startDate);
+            startDate.setHours(0, 0, 0, 0);
+            
+            // If before start date, it's effectively week 1 or "not started"
+            // But we'll follow the group's current week logic
+            const diffTime = now.getTime() - startDate.getTime();
+            const diffDays = Math.floor(diffTime / (1000 * 3600 * 24));
+            currentWeekNumber = Math.floor(diffDays / 7) + 1;
+            
+            if (currentWeekNumber < 1) currentWeekNumber = 1; // Cap at 1 if early
+        }
 
         // --- Logic: Check Daily Submission Limit ---
-        const startOfDay = new Date(now.setHours(0, 0, 0, 0));
-        const endOfDay = new Date(now.setHours(23, 59, 59, 999));
+        const startOfDay = new Date(now);
+        startOfDay.setHours(0, 0, 0, 0);
+        const endOfDay = new Date(now);
+        endOfDay.setHours(23, 59, 59, 999);
 
         const existingDailyLog = await prisma.exerciseLog.findFirst({
             where: {
@@ -78,23 +94,16 @@ export async function submitExercise(formData) {
             return { error: "วันนี้คุณส่งผลการออกกำลังกายไปแล้ว พรุ่งนี้ค่อยส่งใหม่นะ!" };
         }
 
-        // --- Logic: Check Weekly Submission Count ---
-        const { startOfWeek, endOfWeek } = getStartAndEndOfISOWeek(now);
-
+        // --- Logic: Check Weekly Submission Count (Based on Relative Week) ---
         const weeklyLogsCount = await prisma.exerciseLog.count({
             where: {
                 userId: user.id,
-                createdAt: {
-                    gte: startOfWeek,
-                    lte: endOfWeek
-                }
+                weekNumber: currentWeekNumber
             }
         });
 
         if (weeklyLogsCount >= REQUIRED_SUBMISSIONS_FOR_REWARD) {
-            // Can they still submit if they already got reward?
-            // "1 week can send max 3 times" -> implies they CANNOT send more than 3.
-            return { error: "สัปดาห์นี้คุณส่งผลครบ 3 ครั้งแล้ว เก่งมาก! พักผ่อนแล้วมาเริ่มใหม่สัปดาห์หน้านะ" };
+            return { error: `สัปดาห์ที่ ${currentWeekNumber} คุณส่งผลครบ 3 ครั้งแล้ว เก่งมาก! พักผ่อนแล้วมาเริ่มใหม่สัปดาห์หน้านะ` };
         }
 
         // --- Logic: Upload Images to Supabase ---
@@ -248,3 +257,37 @@ function getStartAndEndOfISOWeek(date) {
 
 
 
+
+export async function getExerciseLogs(query = '') {
+    try {
+        const logs = await prisma.exerciseLog.findMany({
+            where: {
+                OR: [
+                    { user: { firstName: { contains: query, mode: 'insensitive' } } },
+                    { user: { lastName: { contains: query, mode: 'insensitive' } } },
+                    { note: { contains: query, mode: 'insensitive' } }
+                ]
+            },
+            include: {
+                user: {
+                    include: {
+                        groups: {
+                            include: {
+                                group: true
+                            }
+                        }
+                    }
+                },
+                images: true
+            },
+            orderBy: {
+                createdAt: 'desc'
+            },
+            take: 100
+        });
+        return logs;
+    } catch (error) {
+        console.error("Error fetching exercise logs:", error);
+        return [];
+    }
+}

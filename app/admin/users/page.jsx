@@ -5,17 +5,22 @@ export default async function UsersPage({ searchParams }) {
     const params = await searchParams;
     const query = params?.q || '';
 
-    const users = await prisma.user.findMany({
-        where: {
-            OR: [
-                { displayName: { contains: query, mode: 'insensitive' } },
-                { firstName: { contains: query, mode: 'insensitive' } },
-                { lastName: { contains: query, mode: 'insensitive' } },
-            ]
-        },
-        orderBy: { createdAt: 'desc' },
-        take: 50
-    });
+    let users = [];
+    try {
+        users = await prisma.user.findMany({
+            where: {
+                OR: [
+                    { displayName: { contains: query, mode: 'insensitive' } },
+                    { firstName: { contains: query, mode: 'insensitive' } },
+                    { lastName: { contains: query, mode: 'insensitive' } },
+                ]
+            },
+            orderBy: { createdAt: 'desc' },
+            take: 50
+        });
+    } catch (error) {
+        console.error("Fetch users error:", error);
+    }
 
     return (
         <div className="min-h-screen bg-gray-50/50 p-8 font-sans">

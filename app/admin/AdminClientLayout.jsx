@@ -47,6 +47,7 @@ export default function AdminClientLayout({ children, session }) {
                     <SidebarLink href="/admin" label="ภาพรวมระบบ" icon="📊" onClick={() => setIsSidebarOpen(false)} />
                     <SidebarLink href="/admin/users" label="จัดการผู้ใช้" icon="👥" onClick={() => setIsSidebarOpen(false)} />
                     <SidebarLink href="/admin/groups" label="จัดการกลุ่ม" icon="🏘️" onClick={() => setIsSidebarOpen(false)} />
+                    <SidebarLink href="/admin/exercise-logs" label="บันทึกการออกกำลังกาย" icon="📝" onClick={() => setIsSidebarOpen(false)} />
                     <SidebarLink href="/admin/rewards" label="ของรางวัล" icon="🎁" onClick={() => setIsSidebarOpen(false)} />
                     {session.role === 'SUPER_ADMIN' && (
                         <SidebarLink href="/admin/manage-admins" label="ผู้ดูแลระบบ" icon="🛡️" onClick={() => setIsSidebarOpen(false)} />
