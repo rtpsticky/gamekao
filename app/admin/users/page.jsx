@@ -118,7 +118,7 @@ export default async function UsersPage({ searchParams }) {
                                         <td className="px-6 py-4">
                                             <div className="flex items-center">
                                                 <span className="text-sm font-bold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-lg border border-emerald-100">
-                                                    {user.currentPosition?.toLocaleString() || 0} คะแนน
+                                                    {Math.max(0, (user.currentPosition || 0) - 1).toLocaleString()} คะแนน
                                                 </span>
                                             </div>
                                         </td>
