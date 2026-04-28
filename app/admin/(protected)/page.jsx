@@ -7,7 +7,7 @@ async function getStats() {
         const exerciseLogCount = await prisma.exerciseLog.count();
         const totalPointsData = await prisma.user.aggregate({
             _sum: {
-                currentPosition: true
+                points: true
             }
         });
         const recentLogs = await prisma.exerciseLog.findMany({
@@ -31,7 +31,7 @@ async function getStats() {
             userCount,
             groupCount,
             exerciseLogCount,
-            totalPoints: totalPointsData._sum.currentPosition || 0,
+            totalPoints: totalPointsData._sum.points || 0,
             recentLogs
         };
     } catch (error) {

@@ -202,8 +202,10 @@ export default function GroupDetailsPage({ params }) {
                                         <td className="p-4 text-slate-600">
                                             {user.age} ปี / {user.gender === 'male' ? 'ชาย' : 'หญิง'}
                                         </td>
-                                        <td className="p-4 text-center font-mono font-bold text-emerald-600">
-                                            {user.points.toLocaleString()}
+                                        <td className="p-4 text-center">
+                                            <span className="bg-blue-50 text-blue-700 px-3 py-1 rounded-lg font-bold border border-blue-100">
+                                                {(user.currentPosition || 1) - 1}
+                                            </span>
                                         </td>
                                         <td className="p-4 text-right pr-6">
                                             <button

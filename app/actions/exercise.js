@@ -170,7 +170,18 @@ export async function submitExercise(formData) {
 
             await tx.user.update({
                 where: { id: user.id },
-                data: { currentPosition: nextPosition }
+                data: { 
+                    currentPosition: nextPosition,
+                    points: { increment: 10 }
+                }
+            });
+
+            await tx.pointHistory.create({
+                data: {
+                    userId: user.id,
+                    amount: 10,
+                    reason: `ส่งผลการออกกำลังกาย สัปดาห์ที่ ${currentWeekNumber} ครั้งที่ ${weeklyLogsCount + 1}`
+                }
             });
 
             await tx.gameActionLog.create({
