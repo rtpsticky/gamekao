@@ -1,68 +1,102 @@
 import { prisma } from "@/app/lib/prisma";
 import Link from "next/link";
+import LogFilters from "./LogFilters";
+
+const PAGE_SIZE = 20;
 
 export default async function ExerciseLogsPage({ searchParams }) {
     const params = await searchParams;
     const query = params?.q || '';
+    const groupId = params?.groupId || '';
+    const page = parseInt(params?.page || '1', 10);
+    const skip = (page - 1) * PAGE_SIZE;
 
     let logs = [];
+    let totalCount = 0;
+    let groups = [];
+
     try {
-        logs = await prisma.exerciseLog.findMany({
-            where: {
-                OR: [
-                    { user: { firstName: { contains: query, mode: 'insensitive' } } },
-                    { user: { lastName: { contains: query, mode: 'insensitive' } } },
-                    { note: { contains: query, mode: 'insensitive' } }
-                ]
-            },
-            include: {
-                user: {
-                    include: {
+        // Fetch all active groups for the filter
+        groups = await prisma.group.findMany({
+            where: { isActive: true },
+            select: { id: true, name: true },
+            orderBy: { name: 'asc' }
+        });
+
+        // Build the where clause
+        const where = {
+            AND: [
+                query ? {
+                    OR: [
+                        { user: { firstName: { contains: query, mode: 'insensitive' } } },
+                        { user: { lastName: { contains: query, mode: 'insensitive' } } },
+                        { note: { contains: query, mode: 'insensitive' } }
+                    ]
+                } : {},
+                groupId ? {
+                    user: {
                         groups: {
-                            include: {
-                                group: true
+                            some: {
+                                groupId: groupId
                             }
                         }
                     }
+                } : {}
+            ]
+        };
+
+        // Fetch logs and count in parallel
+        const [logsData, countData] = await Promise.all([
+            prisma.exerciseLog.findMany({
+                where,
+                include: {
+                    user: {
+                        include: {
+                            groups: {
+                                include: {
+                                    group: true
+                                }
+                            }
+                        }
+                    },
+                    images: true
                 },
-                images: true
-            },
-            orderBy: {
-                createdAt: 'desc'
-            },
-            take: 100
-        });
+                orderBy: {
+                    createdAt: 'desc'
+                },
+                skip: skip,
+                take: PAGE_SIZE
+            }),
+            prisma.exerciseLog.count({ where })
+        ]);
+
+        logs = logsData;
+        totalCount = countData;
     } catch (error) {
         console.error("Fetch exercise logs error:", error);
     }
+
+    const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
     return (
         <div className="min-h-screen bg-gray-50/50 p-4 md:p-8 font-sans">
             <div className="max-w-7xl mx-auto space-y-8">
                 {/* Header Section */}
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                     <div>
                         <h1 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">
                             บันทึกการออกกำลังกาย
                         </h1>
                         <p className="text-gray-500 mt-1 text-sm font-medium">
-                            รายการส่งผลการออกกำลังกายทั้งหมด {logs.length} รายการ
+                            พบทั้งหมด {totalCount} รายการ {totalPages > 1 && `(หน้า ${page}/${totalPages})`}
                         </p>
                     </div>
 
-                    <form className="relative group w-full md:w-96">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <svg className="h-5 w-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                            </svg>
-                        </div>
-                        <input
-                            name="q"
-                            defaultValue={query}
-                            placeholder="ค้นหาชื่อผู้ใช้ หรือข้อความเพิ่มเติม..."
-                            className="block w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl leading-5 bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200 shadow-sm hover:shadow-md"
-                        />
-                    </form>
+                    <LogFilters 
+                        groups={groups} 
+                        initialQuery={query} 
+                        initialGroupId={groupId} 
+                    />
                 </div>
 
                 {/* Table Section */}
@@ -180,6 +214,48 @@ export default async function ExerciseLogsPage({ searchParams }) {
                             </tbody>
                         </table>
                     </div>
+
+                    {/* Pagination */}
+                    {totalPages > 1 && (
+                        <div className="px-6 py-4 bg-gray-50/50 border-t border-gray-100 flex items-center justify-between">
+                            <div className="text-sm text-gray-500">
+                                แสดง {skip + 1} ถึง {Math.min(skip + PAGE_SIZE, totalCount)} จาก {totalCount} รายการ
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <Link
+                                    href={{
+                                        pathname: '/admin/exercise-logs',
+                                        query: { q: query, groupId: groupId, page: Math.max(1, page - 1) }
+                                    }}
+                                    className={`px-4 py-2 rounded-lg border border-gray-200 text-sm font-medium transition-all ${
+                                        page === 1 
+                                            ? 'bg-gray-50 text-gray-300 cursor-not-allowed' 
+                                            : 'bg-white text-gray-700 hover:bg-gray-50 active:scale-95'
+                                    }`}
+                                    aria-disabled={page === 1}
+                                >
+                                    ย้อนกลับ
+                                </Link>
+                                <div className="flex items-center px-4 text-sm font-bold text-gray-700">
+                                    {page} / {totalPages}
+                                </div>
+                                <Link
+                                    href={{
+                                        pathname: '/admin/exercise-logs',
+                                        query: { q: query, groupId: groupId, page: Math.min(totalPages, page + 1) }
+                                    }}
+                                    className={`px-4 py-2 rounded-lg border border-gray-200 text-sm font-medium transition-all ${
+                                        page >= totalPages 
+                                            ? 'bg-gray-50 text-gray-300 cursor-not-allowed' 
+                                            : 'bg-white text-gray-700 hover:bg-gray-50 active:scale-95'
+                                    }`}
+                                    aria-disabled={page >= totalPages}
+                                >
+                                    ถัดไป
+                                </Link>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
