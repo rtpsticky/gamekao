@@ -22,9 +22,12 @@ export async function submitExercise(formData) {
         return { error: "ไม่พบข้อมูลผู้ใช้ (Line ID)" };
     }
 
+    // Images are now optional
+    /*
     if (!files || files.length === 0) {
         return { error: "กรุณาอัปโหลดรูปภาพอย่างน้อย 1 รูป" };
     }
+    */
 
     if (files.length > 3) {
         return { error: "อัปโหลดได้สูงสุด 3 รูป" };
@@ -228,7 +231,17 @@ export async function submitExercise(formData) {
 
     } catch (error) {
         console.error("Exercise submission error:", error);
-        return { error: "เกิดข้อผิดพลาดในการบันทึกข้อมูล" };
+        
+        // Detailed error messages based on error type
+        if (error.message && error.message.includes("Failed to upload image")) {
+            return { error: `ไม่สามารถอัปโหลดรูปภาพได้: ${error.message}. กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ตหรือลองใหม่อีกครั้ง` };
+        }
+
+        if (error.code === 'P2002') {
+            return { error: "ข้อมูลซ้ำ: คุณอาจได้ส่งผลการออกกำลังกายไปแล้วในช่วงเวลานี้" };
+        }
+
+        return { error: `เกิดข้อผิดพลาดทางเทคนิค: ${error.message || "ไม่สามารถระบุสาเหตุได้"} กรุณาแคปหน้าจอนี้แจ้งเจ้าหน้าที่` };
     }
 }
 

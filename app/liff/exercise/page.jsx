@@ -77,10 +77,13 @@ export default function ExerciseSubmissionPage() {
             return;
         }
 
+        // Image is now optional
+        /*
         if (selectedFiles.length === 0) {
             Swal.fire('ลืมรูปหรือเปล่า?', 'กรุณาแนบรูปตอนออกกำลังกายอย่างน้อย 1 รูปนะ', 'warning');
             return;
         }
+        */
 
         setIsSubmitting(true);
 
@@ -132,7 +135,13 @@ export default function ExerciseSubmissionPage() {
             }
         } catch (err) {
             console.error(err);
-            Swal.fire('Error', 'เกิดข้อผิดพลาดทางเทคนิค', 'error');
+            Swal.fire({
+                icon: 'error',
+                title: 'เกิดข้อผิดพลาดทางเทคนิค',
+                text: `ไม่สามารถส่งข้อมูลได้: ${err.message || 'โปรดลองใหม่อีกครั้ง หรือติดต่อเจ้าหน้าที่'}`,
+                confirmButtonText: 'รับทราบ',
+                confirmButtonColor: '#10b981'
+            });
         } finally {
             setIsSubmitting(false);
         }
@@ -140,10 +149,21 @@ export default function ExerciseSubmissionPage() {
 
     if (liffError) {
         return (
-            <div className="p-4 text-center text-red-500">
-                <h1 className="text-xl font-bold">LIFF Error</h1>
-                <p>{liffError}</p>
-                <p className="text-sm mt-2">โปรดเปิดลิ้งค์นี้ผ่านแอป LINE</p>
+            <div className="min-h-screen flex items-center justify-center bg-red-50 p-6">
+                <div className="max-w-sm w-full bg-white rounded-2xl shadow-xl p-8 text-center border border-red-100">
+                    <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <svg className="w-8 h-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                    </div>
+                    <h1 className="text-xl font-bold text-slate-800 mb-2">การเชื่อมต่อผิดพลาด</h1>
+                    <p className="text-slate-600 text-sm mb-4">
+                        ไม่สามารถเข้าถึงข้อมูล LINE ได้ ({liffError})
+                    </p>
+                    <p className="text-emerald-600 font-medium text-sm">
+                        โปรดลองเปิดผ่านแอป LINE หรือตรวจสอบอินเทอร์เน็ต
+                    </p>
+                </div>
             </div>
         );
     }
@@ -208,7 +228,7 @@ export default function ExerciseSubmissionPage() {
                         <div>
                             <label className="block text-gray-700 font-bold mb-2 flex items-center gap-2">
                                 <span>📸 รูปถ่ายขณะออกกำลังกาย</span>
-                                <span className="text-xs font-normal text-red-400">*(1-3 รูป)</span>
+                                <span className="text-xs font-normal text-slate-400">(ถ้ามี, สูงสุด 3 รูป)</span>
                             </label>
 
                             <div className="grid grid-cols-3 gap-2 mb-3">
