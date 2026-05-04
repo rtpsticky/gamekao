@@ -13,6 +13,7 @@ export default function ExerciseSubmissionPage() {
     const [previews, setPreviews] = useState([]);
     const [note, setNote] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [submitStatus, setSubmitStatus] = useState('');
     const [liffError, setLiffError] = useState(null);
     const [isInactive, setIsInactive] = useState(false);
     const [noGroup, setNoGroup] = useState(false);
@@ -51,6 +52,13 @@ export default function ExerciseSubmissionPage() {
             });
     }, []);
 
+    // Cleanup previews to avoid memory leaks
+    useEffect(() => {
+        return () => {
+            previews.forEach(url => URL.revokeObjectURL(url));
+        };
+    }, [previews]);
+
     const handleFileChange = (e) => {
         const files = Array.from(e.target.files);
         if (files.length > 3) {
@@ -86,39 +94,79 @@ export default function ExerciseSubmissionPage() {
         */
 
         setIsSubmitting(true);
+        setSubmitStatus('กำลังเตรียมข้อมูล...');
 
         const formData = new FormData();
         formData.append('lineUserId', lineProfile.userId);
         formData.append('note', note);
 
-        // Options for image compression
-        const options = {
-            maxSizeMB: 1,
-            maxWidthOrHeight: 1920,
-            useWebWorker: true
-        };
-
         try {
-            // Compress images before appending
-            const compressedFilesPromises = selectedFiles.map(file => imageCompression(file, options));
-            const compressedFiles = await Promise.all(compressedFilesPromises);
+            // Options for image compression
+            const options = {
+                maxSizeMB: 1,
+                maxWidthOrHeight: 1920,
+                useWebWorker: true
+            };
 
-            compressedFiles.forEach(file => {
-                formData.append('images', file);
-            });
-            // selectedFiles.forEach(file => {     <-- Remove old loop
-            //     formData.append('images', file);
-            // });
+            // Compress images if any
+            if (selectedFiles.length > 0) {
+                setSubmitStatus('กำลังลดขนาดรูปภาพ...');
+                const compressedFilesPromises = selectedFiles.map(file => imageCompression(file, options));
+                const compressedFiles = await Promise.all(compressedFilesPromises);
 
-            const result = await submitExercise(formData);
-
-            if (result.error) {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'ส่งไม่ผ่าน',
-                    text: result.error,
+                compressedFiles.forEach(file => {
+                    formData.append('images', file);
                 });
-            } else {
+            }
+
+            let result;
+            let attempts = 0;
+            const maxAttempts = 5;
+            let success = false;
+
+            while (attempts < maxAttempts && !success) {
+                attempts++;
+                setSubmitStatus(attempts === 1 ? 'กำลังส่งข้อมูล...' : `กำลังพยายามส่งใหม่ (ครั้งที่ ${attempts}/${maxAttempts})...`);
+
+                try {
+                    result = await submitExercise(formData);
+
+                    if (!result.error) {
+                        success = true;
+                    } else {
+                        // Check if it's a business logic error (don't retry)
+                        const businessErrors = [
+                            "ไม่พบข้อมูลผู้ใช้",
+                            "อัปโหลดได้สูงสุด",
+                            "ไม่พบผู้ใช้ในระบบ",
+                            "บัญชีของคุณถูกระงับ",
+                            "วันนี้คุณส่งผล",
+                            "ส่งผลครบ",
+                            "NO_GROUP",
+                            "ข้อมูลซ้ำ"
+                        ];
+                        
+                        const isBusinessError = businessErrors.some(msg => result.error.includes(msg));
+                        if (isBusinessError) {
+                            break; // Stop retrying for business errors
+                        }
+
+                        // If it's a technical error, wait and retry
+                        if (attempts < maxAttempts) {
+                            await new Promise(r => setTimeout(r, 2000));
+                        }
+                    }
+                } catch (err) {
+                    console.error(`Attempt ${attempts} failed:`, err);
+                    if (attempts < maxAttempts) {
+                        await new Promise(r => setTimeout(r, 2000));
+                    } else {
+                        result = { error: err.message || 'เกิดข้อผิดพลาดในการเชื่อมต่อ' };
+                    }
+                }
+            }
+
+            if (success) {
                 let msg = 'บันทึกสำเร็จ! คุณได้เดิน 1 ช่อง';
                 if (result.earnedDice) {
                     msg += ' และได้รับลูกเต๋าเพิ่ม 1 ลูก! 🎉';
@@ -132,6 +180,12 @@ export default function ExerciseSubmissionPage() {
                 }).then(() => {
                     window.location.href = 'https://liff.line.me/2008850670-0gahTNEx';
                 });
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'ส่งไม่ผ่าน',
+                    text: result.error || 'ไม่สามารถส่งข้อมูลได้หลังจากพยายามหลายครั้ง',
+                });
             }
         } catch (err) {
             console.error(err);
@@ -144,6 +198,7 @@ export default function ExerciseSubmissionPage() {
             });
         } finally {
             setIsSubmitting(false);
+            setSubmitStatus('');
         }
     };
 
@@ -282,7 +337,7 @@ export default function ExerciseSubmissionPage() {
                                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                     </svg>
-                                    กำลังบันทึก...
+                                    {submitStatus || "กำลังบันทึก..."}
                                 </span>
                             ) : (
                                 "ส่งผลงาน! 🚀"
