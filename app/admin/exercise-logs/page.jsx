@@ -1,6 +1,7 @@
 import { prisma } from "@/app/lib/prisma";
 import Link from "next/link";
 import LogFilters from "./LogFilters";
+import AddExerciseLogModal from "./AddExerciseLogModal";
 
 const PAGE_SIZE = 20;
 
@@ -14,6 +15,7 @@ export default async function ExerciseLogsPage({ searchParams }) {
     let logs = [];
     let totalCount = 0;
     let groups = [];
+    let allUsers = [];
 
     try {
         // Fetch all active groups for the filter
@@ -21,6 +23,24 @@ export default async function ExerciseLogsPage({ searchParams }) {
             where: { isActive: true },
             select: { id: true, name: true },
             orderBy: { name: 'asc' }
+        });
+
+        // Fetch all users for the add-log modal (พร้อมกลุ่มที่สังกัด)
+        allUsers = await prisma.user.findMany({
+            where: { isActive: true },
+            select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                displayName: true,
+                groups: {
+                    select: {
+                        groupId: true,
+                        group: { select: { id: true, name: true } }
+                    }
+                }
+            },
+            orderBy: { firstName: 'asc' }
         });
 
         // Build the where clause
@@ -82,7 +102,7 @@ export default async function ExerciseLogsPage({ searchParams }) {
         <div className="min-h-screen bg-gray-50/50 p-4 md:p-8 font-sans">
             <div className="max-w-7xl mx-auto space-y-8">
                 {/* Header Section */}
-                <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+                    <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                     <div>
                         <h1 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">
                             บันทึกการออกกำลังกาย
@@ -92,11 +112,14 @@ export default async function ExerciseLogsPage({ searchParams }) {
                         </p>
                     </div>
 
-                    <LogFilters 
-                        groups={groups} 
-                        initialQuery={query} 
-                        initialGroupId={groupId} 
-                    />
+                    <div className="flex flex-col md:flex-row items-stretch md:items-end gap-3">
+                        <LogFilters 
+                            groups={groups} 
+                            initialQuery={query} 
+                            initialGroupId={groupId} 
+                        />
+                        <AddExerciseLogModal users={allUsers} groups={groups} />
+                    </div>
                 </div>
 
                 {/* Table Section */}

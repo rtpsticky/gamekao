@@ -282,6 +282,100 @@ function getStartAndEndOfISOWeek(date) {
 
 
 
+/**
+ * Admin: เพิ่มประวัติการออกกำลังกายให้ user โดยตรง
+ * ไม่ตรวจสอบ daily limit แต่ตรวจสอบ weekly limit (max 3/week)
+ */
+export async function adminAddExerciseLog(formData) {
+    const userId = formData.get('userId');
+    const weekNumber = parseInt(formData.get('weekNumber'), 10);
+    const note = formData.get('note') || '';
+
+    if (!userId || !weekNumber) {
+        return { error: 'กรุณากรอกข้อมูลให้ครบถ้วน' };
+    }
+
+    try {
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+            include: { diceInventory: true }
+        });
+
+        if (!user) return { error: 'ไม่พบผู้ใช้ในระบบ' };
+
+        // นับจำนวนครั้งที่ส่งในสัปดาห์นั้นๆ แล้ว
+        const weeklyLogsCount = await prisma.exerciseLog.count({
+            where: { userId: user.id, weekNumber }
+        });
+
+        if (weeklyLogsCount >= REQUIRED_SUBMISSIONS_FOR_REWARD) {
+            return { error: `สัปดาห์ที่ ${weekNumber} ผู้ใช้นี้ส่งผลครบ 3 ครั้งแล้ว` };
+        }
+
+        const sessionCount = weeklyLogsCount + 1;
+
+        const result = await prisma.$transaction(async (tx) => {
+            // 1. สร้าง ExerciseLog
+            await tx.exerciseLog.create({
+                data: {
+                    userId: user.id,
+                    weekNumber,
+                    sessionCount,
+                    note,
+                }
+            });
+
+            // 2. เดิน 1 ช่อง + บวก 10 แต้ม
+            const nextPosition = Math.min((user.currentPosition || 0) + 1, 48);
+            await tx.user.update({
+                where: { id: user.id },
+                data: {
+                    currentPosition: nextPosition,
+                    points: { increment: 10 }
+                }
+            });
+
+            await tx.pointHistory.create({
+                data: {
+                    userId: user.id,
+                    amount: 10,
+                    reason: `[Admin] ส่งผลออกกำลังกาย สัปดาห์ที่ ${weekNumber} ครั้งที่ ${sessionCount}`
+                }
+            });
+
+            await tx.gameActionLog.create({
+                data: {
+                    userId: user.id,
+                    actionType: 'EXERCISE_STEP',
+                    fromPosition: user.currentPosition || 0,
+                    toPosition: nextPosition,
+                    description: '[Admin] เพิ่มประวัติออกกำลังกายโดย Admin'
+                }
+            });
+
+            // 3. ถ้าครบ 3 ครั้ง → ได้ลูกเต๋า
+            let earnedDice = false;
+            if (sessionCount === REQUIRED_SUBMISSIONS_FOR_REWARD) {
+                await tx.diceInventory.upsert({
+                    where: { userId: user.id },
+                    update: { diceCount: { increment: 1 } },
+                    create: { userId: user.id, diceCount: 1 }
+                });
+                earnedDice = true;
+            }
+
+            return { success: true, earnedDice, sessionCount, newPosition: nextPosition };
+        });
+
+        revalidatePath('/admin/exercise-logs');
+        return result;
+
+    } catch (error) {
+        console.error('adminAddExerciseLog error:', error);
+        return { error: `เกิดข้อผิดพลาด: ${error.message}` };
+    }
+}
+
 export async function getExerciseLogs(query = '') {
     try {
         const logs = await prisma.exerciseLog.findMany({

@@ -10,6 +10,8 @@ export default function ExportUsersButton({ users }) {
             'เพศ',
             'เบอร์โทร',
             'คะแนนสะสม',
+            'ลูกเต๋าคงเหลือ',
+            'จำนวนการทอย (ครั้ง)',
             'สถานะ',
             'วันที่สมัคร',
         ];
@@ -22,6 +24,8 @@ export default function ExportUsersButton({ users }) {
             user.gender === 'male' ? 'ชาย' : user.gender === 'female' ? 'หญิง' : '',
             user.phoneNumber || '',
             Math.max(0, (user.currentPosition || 0) - 1),
+            user.diceInventory?.diceCount ?? 0,
+            user._count?.gameActions ?? 0,
             user.isActive ? 'ใช้งาน' : 'ปิดใช้งาน',
             new Date(user.createdAt).toLocaleDateString('th-TH', {
                 year: 'numeric',

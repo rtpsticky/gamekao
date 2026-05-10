@@ -5,19 +5,50 @@ import ExportUsersButton from "./ExportUsersButton";
 export default async function UsersPage({ searchParams }) {
     const params = await searchParams;
     const query = params?.q || '';
+    const groupId = params?.groupId || '';
+
+    // ดึงรายการกลุ่มทั้งหมด
+    let groups = [];
+    try {
+        groups = await prisma.group.findMany({
+            orderBy: { name: 'asc' },
+            select: { id: true, name: true }
+        });
+    } catch (e) {
+        console.error('Fetch groups error:', e);
+    }
 
     let users = [];
     try {
         users = await prisma.user.findMany({
             where: {
-                OR: [
-                    { displayName: { contains: query, mode: 'insensitive' } },
-                    { firstName: { contains: query, mode: 'insensitive' } },
-                    { lastName: { contains: query, mode: 'insensitive' } },
+                AND: [
+                    // filter ชื่อ
+                    query ? {
+                        OR: [
+                            { displayName: { contains: query, mode: 'insensitive' } },
+                            { firstName: { contains: query, mode: 'insensitive' } },
+                            { lastName: { contains: query, mode: 'insensitive' } },
+                        ]
+                    } : {},
+                    // filter กลุ่ม
+                    groupId ? {
+                        groups: { some: { groupId } }
+                    } : {},
                 ]
             },
+            include: {
+                diceInventory: true,
+                _count: {
+                    select: {
+                        gameActions: {
+                            where: { actionType: 'DICE_ROLL' }
+                        }
+                    }
+                }
+            },
             orderBy: { createdAt: 'desc' },
-            take: 50
+            take: 100
         });
     } catch (error) {
         console.error("Fetch users error:", error);
@@ -38,26 +69,66 @@ export default async function UsersPage({ searchParams }) {
                     </div>
 
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
-                        <form className="relative group w-full md:w-80">
-                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <svg className="h-5 w-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                                </svg>
-                            </div>
-                            <input
-                                name="q"
-                                defaultValue={query}
-                                placeholder="ค้นหาชื่อ, นามสกุล..."
-                                className="block w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl leading-5 bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200 shadow-sm hover:shadow-md"
-                            />
-                            {query && (
-                                <a href="/admin/users" className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600">
-                                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        {/* ฟอร์มค้นหา + filter กลุ่ม */}
+                        <form className="flex flex-col sm:flex-row items-stretch gap-2" method="GET">
+                            {/* ช่องค้นหา */}
+                            <div className="relative group">
+                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <svg className="h-5 w-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                                     </svg>
+                                </div>
+                                <input
+                                    name="q"
+                                    defaultValue={query}
+                                    placeholder="ค้นหาชื่อ, นามสกุล..."
+                                    className="block w-full sm:w-64 pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl leading-5 bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200 shadow-sm hover:shadow-md"
+                                />
+                            </div>
+
+                            {/* Dropdown กลุ่ม */}
+                            <div className="relative">
+                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                                    </svg>
+                                </div>
+                                <select
+                                    name="groupId"
+                                    defaultValue={groupId}
+                                    className="block w-full sm:w-52 pl-9 pr-8 py-2.5 border border-gray-200 rounded-xl leading-5 bg-white text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200 shadow-sm hover:shadow-md appearance-none cursor-pointer"
+                                >
+                                    <option value="">ทุกกลุ่ม</option>
+                                    {groups.map((g) => (
+                                        <option key={g.id} value={g.id}>{g.name}</option>
+                                    ))}
+                                </select>
+                                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                    <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                </div>
+                            </div>
+
+                            {/* ปุ่มค้นหา */}
+                            <button
+                                type="submit"
+                                className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl shadow-sm hover:shadow-md transition-all duration-200 whitespace-nowrap"
+                            >
+                                ค้นหา
+                            </button>
+
+                            {/* ปุ่มล้าง filter */}
+                            {(query || groupId) && (
+                                <a
+                                    href="/admin/users"
+                                    className="inline-flex items-center justify-center px-4 py-2.5 border border-gray-200 bg-white hover:bg-gray-50 text-gray-600 text-sm font-semibold rounded-xl shadow-sm hover:shadow-md transition-all duration-200 whitespace-nowrap"
+                                >
+                                    ล้าง
                                 </a>
                             )}
                         </form>
+
                         <ExportUsersButton users={users} />
                     </div>
                 </div>
@@ -72,6 +143,8 @@ export default async function UsersPage({ searchParams }) {
                                     <th className="px-6 py-5 text-xs font-bold text-gray-500 uppercase tracking-wider text-center">สถานะ</th>
                                     <th className="px-6 py-5 text-xs font-bold text-gray-500 uppercase tracking-wider text-center">อายุ / เพศ</th>
                                     <th className="px-6 py-5 text-xs font-bold text-gray-500 uppercase tracking-wider">คะแนนสะสม</th>
+                                    <th className="px-6 py-5 text-xs font-bold text-gray-500 uppercase tracking-wider text-center">ลูกเต๋าคงเหลือ</th>
+                                    <th className="px-6 py-5 text-xs font-bold text-gray-500 uppercase tracking-wider text-center">การทอย</th>
                                     <th className="px-6 py-5 text-xs font-bold text-gray-500 uppercase tracking-wider">วันที่สมัคร</th>
                                     <th className="px-6 py-5 text-xs font-bold text-gray-500 uppercase tracking-wider">เบอร์โทร</th>
                                 </tr>
@@ -131,6 +204,25 @@ export default async function UsersPage({ searchParams }) {
                                                 </span>
                                             </div>
                                         </td>
+                                        {/* ลูกเต๋าคงเหลือ */}
+                                        <td className="px-6 py-4 text-center">
+                                            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg font-bold text-sm
+                                                            bg-amber-50 text-amber-700 border border-amber-200">
+                                                <span className="text-base">🎲</span>
+                                                {user.diceInventory?.diceCount ?? 0}
+                                            </div>
+                                        </td>
+                                        {/* จำนวนครั้งที่ทอย */}
+                                        <td className="px-6 py-4 text-center">
+                                            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg font-bold text-sm
+                                                            bg-purple-50 text-purple-700 border border-purple-200">
+                                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                                                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                                </svg>
+                                                {user._count?.gameActions ?? 0} ครั้ง
+                                            </div>
+                                        </td>
                                         <td className="px-6 py-4">
                                             <div className="flex flex-col">
                                                 <span className="text-sm font-medium text-gray-900">
@@ -167,7 +259,7 @@ export default async function UsersPage({ searchParams }) {
                                 ))}
                                 {users.length === 0 && (
                                     <tr>
-                                        <td colSpan="6" className="px-6 py-16 text-center">
+                                        <td colSpan="8" className="px-6 py-16 text-center">
                                             <div className="mx-auto w-24 h-24 bg-gray-50 rounded-full flex items-center justify-center mb-4">
                                                 <svg className="h-10 w-10 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
