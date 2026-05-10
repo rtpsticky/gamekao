@@ -1,5 +1,6 @@
 import { prisma } from "@/app/lib/prisma";
 import { toggleUserStatus } from "@/app/actions/user";
+import ExportUsersButton from "./ExportUsersButton";
 
 export default async function UsersPage({ searchParams }) {
     const params = await searchParams;
@@ -36,26 +37,29 @@ export default async function UsersPage({ searchParams }) {
                         </p>
                     </div>
 
-                    <form className="relative group w-full md:w-96">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <svg className="h-5 w-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                            </svg>
-                        </div>
-                        <input
-                            name="q"
-                            defaultValue={query}
-                            placeholder="ค้นหาชื่อ, นามสกุล..."
-                            className="block w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl leading-5 bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200 shadow-sm hover:shadow-md"
-                        />
-                        {query && (
-                            <a href="/admin/users" className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600">
-                                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
+                        <form className="relative group w-full md:w-80">
+                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <svg className="h-5 w-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                                 </svg>
-                            </a>
-                        )}
-                    </form>
+                            </div>
+                            <input
+                                name="q"
+                                defaultValue={query}
+                                placeholder="ค้นหาชื่อ, นามสกุล..."
+                                className="block w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl leading-5 bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200 shadow-sm hover:shadow-md"
+                            />
+                            {query && (
+                                <a href="/admin/users" className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600">
+                                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </a>
+                            )}
+                        </form>
+                        <ExportUsersButton users={users} />
+                    </div>
                 </div>
 
                 {/* Table Section */}
@@ -69,7 +73,7 @@ export default async function UsersPage({ searchParams }) {
                                     <th className="px-6 py-5 text-xs font-bold text-gray-500 uppercase tracking-wider text-center">อายุ / เพศ</th>
                                     <th className="px-6 py-5 text-xs font-bold text-gray-500 uppercase tracking-wider">คะแนนสะสม</th>
                                     <th className="px-6 py-5 text-xs font-bold text-gray-500 uppercase tracking-wider">วันที่สมัคร</th>
-                                    <th className="px-6 py-5 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">ดำเนินการ</th>
+                                    <th className="px-6 py-5 text-xs font-bold text-gray-500 uppercase tracking-wider">เบอร์โทร</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50">
@@ -144,12 +148,20 @@ export default async function UsersPage({ searchParams }) {
                                                 </span>
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4 text-right">
-                                            <button className="text-gray-400 hover:text-blue-600 transition-colors p-2 hover:bg-blue-50 rounded-lg">
-                                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
-                                                </svg>
-                                            </button>
+                                        <td className="px-6 py-4">
+                                            {user.phoneNumber ? (
+                                                <a
+                                                    href={`tel:${user.phoneNumber}`}
+                                                    className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-800 transition-colors"
+                                                >
+                                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                                                    </svg>
+                                                    {user.phoneNumber}
+                                                </a>
+                                            ) : (
+                                                <span className="text-gray-400 text-sm">-</span>
+                                            )}
                                         </td>
                                     </tr>
                                 ))}
