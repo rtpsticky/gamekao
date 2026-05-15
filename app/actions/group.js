@@ -168,15 +168,67 @@ export async function addMembersToGroup(groupId, userIds) {
 
 export async function removeMemberFromGroup(groupId, userId) {
     try {
-        await prisma.groupMember.delete({
-            where: {
-                groupId_userId: {
-                    groupId,
-                    userId
+        await prisma.$transaction(async (tx) => {
+            // 1. ลบรูปภาพที่เกี่ยวข้องกับบันทึกการออกกำลังกาย
+            await tx.exerciseImage.deleteMany({
+                where: {
+                    exerciseLog: {
+                        userId: userId
+                    }
                 }
-            }
+            });
+
+            // 2. ลบบันทึกการออกกำลังกาย
+            await tx.exerciseLog.deleteMany({
+                where: {
+                    userId: userId
+                }
+            });
+
+            // 3. ลบประวัติคะแนน
+            await tx.pointHistory.deleteMany({
+                where: {
+                    userId: userId
+                }
+            });
+
+            // 4. ลบประวัติการเดินในเกม
+            await tx.gameActionLog.deleteMany({
+                where: {
+                    userId: userId
+                }
+            });
+
+            // 5. รีเซ็ตคะแนนและตำแหน่งของผู้ใช้
+            await tx.user.update({
+                where: { id: userId },
+                data: {
+                    points: 0,
+                    currentPosition: 0
+                }
+            });
+
+            // 6. รีเซ็ตจำนวนลูกเต๋า
+            await tx.diceInventory.updateMany({
+                where: { userId: userId },
+                data: {
+                    diceCount: 0
+                }
+            });
+
+            // 7. ลบออกจากกลุ่ม
+            await tx.groupMember.delete({
+                where: {
+                    groupId_userId: {
+                        groupId,
+                        userId
+                    }
+                }
+            });
         });
+
         revalidatePath(`/admin/groups/${groupId}`);
+        revalidatePath('/admin/exercise-logs');
         return { success: true };
     } catch (error) {
         console.error("Error removing member:", error);

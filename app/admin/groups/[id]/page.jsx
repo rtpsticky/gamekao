@@ -88,7 +88,7 @@ export default function GroupDetailsPage({ params }) {
     const handleRemoveUser = async (userId) => {
         const result = await Swal.fire({
             title: 'เอาสมาชิกออก?',
-            text: "ผู้ใช้นี้จะถูกนำออกจากกลุ่ม แต่ข้อมูลแต้มยังคงอยู่",
+            text: "ประวัติการออกกำลังกาย แต้ม และตำแหน่งในเกมจะถูกลบออกทั้งหมด",
             icon: 'warning',
             showCancelButton: true,
             confirmButtonText: 'เอาออก',
